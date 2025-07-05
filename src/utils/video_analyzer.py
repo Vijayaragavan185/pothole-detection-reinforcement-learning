@@ -134,28 +134,99 @@ class VideoAnalyzer:
         print(f"\nDetailed report saved to: {report_path}")
         return all_stats
     
-    def create_visualizations(self):
-        """Create visualization plots"""
+    def create_visualizations(self, all_stats):
+        """Create visualization plots with actual data"""
+        import matplotlib
+        matplotlib.use('TkAgg')  # Set backend explicitly
+        import matplotlib.pyplot as plt
+        import numpy as np
+        
         print("\nCreating visualization plots...")
         
-        # This would create plots - placeholder for now
-        fig, axes = plt.subplots(2, 2, figsize=(12, 8))
-        fig.suptitle("Video Dataset Analysis")
+        # Extract data from all_stats
+        splits = ['train', 'val', 'test']
+        colors = ['#1f77b4', '#ff7f0e', '#2ca02c']  # Blue, Orange, Green
         
-        # Placeholder plots
-        axes[0,0].set_title("Frame Count Distribution")
-        axes[0,1].set_title("Duration Distribution")
-        axes[1,0].set_title("Resolution Distribution")
-        axes[1,1].set_title("Brightness Distribution")
+        # Prepare data
+        brightness_data = []
+        motion_data = []
+        frame_counts = []
+        durations = []
+        
+        for split in splits:
+            if split in all_stats and 'properties' in all_stats[split]:
+                props = all_stats[split]['properties']
+                brightness_data.extend([p['avg_brightness'] for p in props])
+                motion_data.extend([p['motion_score'] for p in props])
+                frame_counts.extend([p['frame_count'] for p in props])
+                durations.extend([p['duration'] for p in props])
+        
+        # Create figure with actual data
+        fig, axes = plt.subplots(2, 2, figsize=(15, 10))
+        fig.suptitle("Pothole Video Dataset Analysis", fontsize=16, fontweight='bold')
+        
+        # Plot 1: Frame Count Distribution
+        if frame_counts:
+            axes[0,0].hist(frame_counts, bins=20, alpha=0.7, color='skyblue', edgecolor='black')
+            axes[0,0].set_title(f"Frame Count Distribution\n(Mean: {np.mean(frame_counts):.1f} frames)")
+            axes[0,0].set_xlabel("Frame Count")
+            axes[0,0].set_ylabel("Frequency")
+            axes[0,0].grid(True, alpha=0.3)
+        
+        # Plot 2: Duration Distribution  
+        if durations:
+            axes[0,1].hist(durations, bins=20, alpha=0.7, color='lightcoral', edgecolor='black')
+            axes[0,1].set_title(f"Duration Distribution\n(Mean: {np.mean(durations):.2f} seconds)")
+            axes[0,1].set_xlabel("Duration (seconds)")
+            axes[0,1].set_ylabel("Frequency")
+            axes[0,1].grid(True, alpha=0.3)
+        
+        # Plot 3: Brightness Distribution by Split
+        brightness_by_split = []
+        labels = []
+        for i, split in enumerate(splits):
+            if split in all_stats and 'properties' in all_stats[split]:
+                props = all_stats[split]['properties']
+                split_brightness = [p['avg_brightness'] for p in props]
+                brightness_by_split.append(split_brightness)
+                labels.append(f"{split.capitalize()} (n={len(split_brightness)})")
+        
+        if brightness_by_split:
+            axes[1,0].boxplot(brightness_by_split, labels=[s.split()[0] for s in labels], 
+                            patch_artist=True, 
+                            boxprops=dict(facecolor='lightgreen', alpha=0.7))
+            axes[1,0].set_title("Brightness Distribution by Split")
+            axes[1,0].set_ylabel("Average Brightness")
+            axes[1,0].grid(True, alpha=0.3)
+        
+        # Plot 4: Motion Score Distribution by Split
+        motion_by_split = []
+        for split in splits:
+            if split in all_stats and 'properties' in all_stats[split]:
+                props = all_stats[split]['properties']
+                split_motion = [p['motion_score'] for p in props]
+                motion_by_split.append(split_motion)
+        
+        if motion_by_split:
+            axes[1,1].boxplot(motion_by_split, labels=[s.capitalize() for s in splits], 
+                            patch_artist=True,
+                            boxprops=dict(facecolor='lightyellow', alpha=0.7))
+            axes[1,1].set_title("Motion Score Distribution by Split")
+            axes[1,1].set_ylabel("Motion Score")
+            axes[1,1].grid(True, alpha=0.3)
         
         plt.tight_layout()
         
         # Save plot
         plot_path = PATHS["raw_videos"].parent / "analysis_plots.png"
-        plt.savefig(plot_path, dpi=150, bbox_inches='tight')
-        print(f"Plots saved to: {plot_path}")
-        plt.close()
-
+        plt.savefig(plot_path, dpi=300, bbox_inches='tight', facecolor='white')
+        print(f"✅ Plots saved to: {plot_path}")
+        
+        # Force display
+        plt.show(block=False)
+        plt.pause(0.1)
+        
+        return fig
 if __name__ == "__main__":
     analyzer = VideoAnalyzer()
     analyzer.generate_analysis_report()
