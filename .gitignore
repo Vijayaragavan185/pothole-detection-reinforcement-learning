@@ -212,3 +212,32 @@ results/logs/
 # OS
 .DS_Store
 Thumbs.db
+# Data files (large files)
+data/raw_videos/
+data/downloads/
+data/processed_frames/
+*.mp4
+*.avi
+*.mov
+*.mkv
+*.zip
+*.tar.gz
+*.rar
+
+# Extracted frames and processed data
+*.jpg
+*.jpeg
+*.png
+*.npy
+*.npz
+
+# Temporary processing files
+temp/
+tmp/
+*.tmp
+*.temp
+
+# Analysis outputs
+*.json
+analysis_*.png
+analysis_*.pdf
