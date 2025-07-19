@@ -159,15 +159,20 @@ class SequenceOptimizer:
             sequences = []
             
             for seq_file in sequence_files:
-                sequence = np.load(seq_file)
-                sequences.append(sequence)
+                try:
+                    sequence = np.load(seq_file)
+                    if sequence.size > 0:  # Valid sequence
+                        sequences.append(sequence)
+                except (ValueError, OSError) as e:
+                    print(f"⚠️  Skipping corrupted file: {seq_file.name}")
+                    continue
             
             if not sequences:
                 continue
             
             # Filter by quality
             quality_sequences, quality_metrics = self.filter_sequences_by_quality(
-                sequences, quality_threshold=0.3
+                sequences, quality_threshold=0.1
             )
             
             # Load corresponding masks if available
