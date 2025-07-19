@@ -227,7 +227,9 @@ class SequenceOptimizer:
             
             # Balance dataset (only for train split)
             if split_name == "train":
-                balanced_sequences = self.balance_dataset(sequences_with_masks)
+                # balanced_sequences = self.balance_dataset(sequences_with_masks)  # Comment out
+                balanced_sequences = sequences_with_masks  # Use all sequences
+                print(f"🎯 Bypassing balance for train: {len(balanced_sequences)} sequences")
             else:
                 balanced_sequences = sequences_with_masks
             

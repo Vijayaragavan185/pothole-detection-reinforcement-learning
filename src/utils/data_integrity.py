@@ -1,16 +1,25 @@
-import numpy as np
+import sys
 from pathlib import Path
-train_dir = Path('data/processed_frames/train')
-valid_sequences = 0
-corrupted_sequences = 0
-for seq_file in train_dir.rglob('sequence_*.npy'):
-    try:
-        seq = np.load(seq_file)
-        if seq.size > 0:
-            valid_sequences += 1
-        else:
-            corrupted_sequences += 1
-    except:
-        corrupted_sequences += 1
-print(f'Valid sequences: {valid_sequences}')
-print(f'Corrupted sequences: {corrupted_sequences}')
+sys.path.append('.')
+from configs.config import PATHS
+
+print('=== TRAIN SPLIT DIAGNOSTIC ===')
+print(f'Raw videos path: {PATHS[\"raw_videos\"]}')
+print(f'Ground truth path: {PATHS[\"ground_truth\"]}')
+
+# Check directories
+train_processed = PATHS['processed_frames'] / 'train'
+train_gt = PATHS['ground_truth'] / 'train'
+
+print(f'Processed frames exist: {train_processed.exists()}')
+print(f'Ground truth exist: {train_gt.exists()}')
+
+if train_processed.exists():
+    video_dirs = [d for d in train_processed.iterdir() if d.is_dir()]
+    print(f'Processed video dirs: {len(video_dirs)}')
+
+if train_gt.exists():
+    gt_dirs = [d for d in train_gt.iterdir() if d.is_dir()]
+    print(f'Ground truth dirs: {len(gt_dirs)}')
+else:
+    print('❌ Ground truth missing - run mask_processor.py first!')
