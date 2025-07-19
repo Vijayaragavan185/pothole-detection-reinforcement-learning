@@ -47,17 +47,39 @@ class SequenceOptimizer:
             "motion_scores": [float(s) for s in motion_scores]
         }
     
-    def filter_sequences_by_quality(self, sequences, quality_threshold=0.3):
+    # def filter_sequences_by_quality(self, sequences, quality_threshold=0.1):
+    #     """Filter sequences based on quality metrics"""
+    #     quality_sequences = []
+    #     quality_metrics = []
+        
+    #     for sequence in sequences:
+    #         metrics = self.calculate_sequence_quality(sequence)
+            
+    #         if metrics["quality_score"] >= quality_threshold:
+    #             quality_sequences.append(sequence)
+    #             quality_metrics.append(metrics)
+        
+    #     return quality_sequences, quality_metrics
+    def filter_sequences_by_quality(self, sequences, quality_threshold=0.1):
         """Filter sequences based on quality metrics"""
         quality_sequences = []
         quality_metrics = []
         
+        # Add debugging
+        quality_scores = []
+        
         for sequence in sequences:
             metrics = self.calculate_sequence_quality(sequence)
+            quality_scores.append(metrics["quality_score"])
             
             if metrics["quality_score"] >= quality_threshold:
                 quality_sequences.append(sequence)
                 quality_metrics.append(metrics)
+        
+        # Debug output
+        if quality_scores:
+            print(f"🔍 Quality scores - Min: {min(quality_scores):.4f}, Max: {max(quality_scores):.4f}, Avg: {sum(quality_scores)/len(quality_scores):.4f}")
+            print(f"🔍 Sequences above threshold {quality_threshold}: {len(quality_sequences)}/{len(sequences)}")
         
         return quality_sequences, quality_metrics
     
