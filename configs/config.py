@@ -102,7 +102,7 @@ DQN_CONFIGS = {
 PATHS = {
     "raw_videos": DATA_DIR / "raw_videos",
     "processed_frames": DATA_DIR / "processed_frames", 
-    "ground_truth": DATA_DIR / "ground_truth",
+    "ground_truth": DATA_DIR / "ground_truth_masks",
     "splits": DATA_DIR / "splits",
     "models": RESULTS_DIR / "models",
     "logs": RESULTS_DIR / "logs",

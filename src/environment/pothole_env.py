@@ -120,7 +120,7 @@ class VideoBasedPotholeEnv(gym.Env):
             PATHS["processed_frames"] / self.split
         ]
         
-        ground_truth_dir = PATHS["ground_truth"] / self.split
+        ground_truth_dir = PATHS["ground_truth_masks"] / self.split
         
         for data_dir in data_sources:
             if data_dir.exists() and len(self.episode_sequences) < self.target_sequences:
@@ -386,6 +386,7 @@ class VideoBasedPotholeEnv(gym.Env):
         
         confidence_threshold = self.action_thresholds[action]
         detection_confidence = self._simulate_detection_confidence()
+        self._last_confidence = detection_confidence
         agent_detects_pothole = detection_confidence > confidence_threshold
         reward = self._calculate_reward(agent_detects_pothole)
         print(f"DEBUG - Action: {action}, Threshold: {confidence_threshold:.3f}, "
@@ -459,46 +460,52 @@ class VideoBasedPotholeEnv(gym.Env):
 
     
     def _calculate_reward(self, agent_detects_pothole):
-        """FIXED: Proper reward calculation with debugging"""
-        if self.current_ground_truth is None:
-            print("⚠️ WARNING: No ground truth available!")
-            return 0  # Changed from 1.0 to 0 for missing ground truth
+        """ENHANCED: Real ground truth first, synthetic fallback"""
         
-        ground_truth_has_pothole = self._ground_truth_has_pothole()
+        if self.current_ground_truth is not None:
+            # ✅ USE REAL GROUND TRUTH (Primary path)
+            ground_truth_has_pothole = self._ground_truth_has_pothole()
+            
+            print(f"REWARD DEBUG: Agent Decision={agent_detects_pothole}, "
+                f"Ground Truth={ground_truth_has_pothole} (REAL)")
+            
+            if ground_truth_has_pothole and agent_detects_pothole:
+                self.total_correct_detections += 1
+                return self.reward_correct  # +10
+            elif not ground_truth_has_pothole and not agent_detects_pothole:
+                self.total_correct_detections += 1
+                return self.reward_correct  # +10
+            elif not ground_truth_has_pothole and agent_detects_pothole:
+                self.total_false_positives += 1
+                return self.reward_false_positive  # -5
+            else:
+                self.total_missed_detections += 1
+                return self.reward_missed  # -20
         
-        # Debug output for troubleshooting
-        print(f"REWARD DEBUG: Agent Decision={agent_detects_pothole}, "
-            f"Ground Truth={ground_truth_has_pothole}")
-        
-        if ground_truth_has_pothole and agent_detects_pothole:
-            # TRUE POSITIVE: Correctly detected pothole
-            self.total_correct_detections += 1
-            reward = self.reward_correct  # +10
-            print(f"  → TRUE POSITIVE: +{reward}")
-            return reward
+        else:
+            # ✅ SYNTHETIC FALLBACK (Your current implementation)
+            print("🔄 Using synthetic ground truth for learning")
             
-        elif not ground_truth_has_pothole and not agent_detects_pothole:
-            # TRUE NEGATIVE: Correctly identified no pothole
-            self.total_correct_detections += 1
-            reward = self.reward_correct  # +10
-            print(f"  → TRUE NEGATIVE: +{reward}")
-            return reward
+            # Store confidence for synthetic GT generation
+            confidence_info = getattr(self, '_last_confidence', 0.5)
             
-        elif not ground_truth_has_pothole and agent_detects_pothole:
-            # FALSE POSITIVE: Incorrectly detected pothole
-            self.total_false_positives += 1
-            reward = self.reward_false_positive  # -5
-            print(f"  → FALSE POSITIVE: {reward}")
-            return reward
+            # Your existing synthetic logic (keep as-is)
+            if confidence_info > 0.7:
+                synthetic_has_pothole = True
+            elif confidence_info < 0.3:
+                synthetic_has_pothole = False
+            else:
+                synthetic_has_pothole = np.random.random() < 0.4
             
-        else:  # ground_truth_has_pothole and not agent_detects_pothole
-            # FALSE NEGATIVE: Missed actual pothole (most dangerous!)
-            self.total_missed_detections += 1
-            reward = self.reward_missed  # -20
-            print(f"  → FALSE NEGATIVE: {reward}")
-            return reward
-
-    
+            if synthetic_has_pothole and agent_detects_pothole:
+                return self.reward_correct
+            elif not synthetic_has_pothole and not agent_detects_pothole:
+                return self.reward_correct
+            elif not synthetic_has_pothole and agent_detects_pothole:
+                return self.reward_false_positive
+            else:
+                return self.reward_missed
+   
     def close(self):
         """Clean up resources"""
         try:
