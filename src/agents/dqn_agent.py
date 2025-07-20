@@ -356,8 +356,8 @@ class DQNAgent:
             'final_info': info
         }
     
-    def evaluate(self, env, num_episodes=10):
-        """FIXED: Complete episode evaluation"""
+    def evaluate(self, env, num_episodes=20):
+        """FIXED: Complete episode evaluation with proper learning signals"""
         self.q_network.eval()
         total_rewards = []
         correct_decisions = 0
@@ -368,7 +368,7 @@ class DQNAgent:
             state, _ = env.reset()
             episode_reward = 0
             steps = 0
-            max_eval_steps = 100  # Allow more steps for evaluation
+            max_eval_steps = 100
             
             # ✅ COMPLETE EPISODE LOOP
             while steps < max_eval_steps:
@@ -379,7 +379,7 @@ class DQNAgent:
                 state = next_state
                 steps += 1
                 
-                # Track performance
+                # Track performance based on actual rewards
                 if reward == 10:
                     correct_decisions += 1
                 elif reward == -5:
@@ -393,7 +393,6 @@ class DQNAgent:
             total_rewards.append(episode_reward)
         
         self.q_network.train()
-        
         total_decisions = correct_decisions + false_positives + missed_detections
         accuracy = (correct_decisions / max(total_decisions, 1)) * 100
         
@@ -406,6 +405,7 @@ class DQNAgent:
             'total_episodes': num_episodes,
             'total_decisions': total_decisions
         }
+
 
     
     def save_model(self, filepath):

@@ -388,6 +388,9 @@ class VideoBasedPotholeEnv(gym.Env):
         detection_confidence = self._simulate_detection_confidence()
         agent_detects_pothole = detection_confidence > confidence_threshold
         reward = self._calculate_reward(agent_detects_pothole)
+        print(f"DEBUG - Action: {action}, Threshold: {confidence_threshold:.3f}, "
+          f"Confidence: {detection_confidence:.3f}, Decision: {agent_detects_pothole}, "
+          f"Ground Truth: {self._ground_truth_has_pothole()}, Reward: {reward}")
         
         info = {
             "action": action,

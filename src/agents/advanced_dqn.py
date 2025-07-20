@@ -577,8 +577,8 @@ class AdvancedDQNAgent:
             'final_info': info
         }
 
-    def evaluate(self, env, num_episodes=10):
-        """Evaluate agent performance"""
+    def evaluate(self, env, num_episodes=20):
+        """FIXED: Complete episode evaluation with proper learning signals"""
         self.q_network.eval()
         total_rewards = []
         correct_decisions = 0
@@ -587,26 +587,44 @@ class AdvancedDQNAgent:
         
         for episode in range(num_episodes):
             state, _ = env.reset()
-            action = self.act(state, training=False)
-            next_state, reward, done, truncated, info = env.step(action)
+            episode_reward = 0
+            steps = 0
+            max_eval_steps = 100
             
-            total_rewards.append(reward)
-            if reward == 10:
-                correct_decisions += 1
-            elif reward == -5:
-                false_positives += 1
-            elif reward == -20:
-                missed_detections += 1
+            # ✅ COMPLETE EPISODE LOOP
+            while steps < max_eval_steps:
+                action = self.act(state, training=False)
+                next_state, reward, done, truncated, info = env.step(action)
+                
+                episode_reward += reward
+                state = next_state
+                steps += 1
+                
+                # Track performance based on actual rewards
+                if reward == 10:
+                    correct_decisions += 1
+                elif reward == -5:
+                    false_positives += 1
+                elif reward == -20:
+                    missed_detections += 1
+                
+                if done or truncated:
+                    break
+            
+            total_rewards.append(episode_reward)
         
         self.q_network.train()
+        total_decisions = correct_decisions + false_positives + missed_detections
+        accuracy = (correct_decisions / max(total_decisions, 1)) * 100
         
         return {
             'average_reward': np.mean(total_rewards),
-            'accuracy': correct_decisions / num_episodes * 100,
+            'accuracy': accuracy,
             'correct_decisions': correct_decisions,
             'false_positives': false_positives,
             'missed_detections': missed_detections,
-            'total_episodes': num_episodes
+            'total_episodes': num_episodes,
+            'total_decisions': total_decisions
         }
 
     
