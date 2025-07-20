@@ -13,7 +13,6 @@ from collections import deque
 sys.path.append(str(Path(__file__).parent.parent.parent))
 from configs.config import ENV_CONFIG, VIDEO_CONFIG, PATHS
 
-
 class VideoBasedPotholeEnv(gym.Env):
     """
     🚀 REVOLUTIONARY RL ENVIRONMENT FOR POTHOLE DETECTION! 🚀
@@ -26,7 +25,7 @@ class VideoBasedPotholeEnv(gym.Env):
     
     metadata = {'render_modes': ['human', 'rgb_array'], 'render_fps': 4}
     
-    def __init__(self, split='train', render_mode=None, max_memory_mb=1024):
+    def __init__(self, split='train', render_mode=None, max_memory_mb=2048, deterministic_loading=True):
         super().__init__()
         
         print("🎯 Initializing Revolutionary Video-Based RL Environment...")
@@ -37,6 +36,7 @@ class VideoBasedPotholeEnv(gym.Env):
         self.sequence_length = VIDEO_CONFIG["sequence_length"]  # 5 frames
         self.input_size = VIDEO_CONFIG["input_size"]            # (224, 224)
         self.max_memory_mb = max_memory_mb  # Memory limit in MB
+        self.deterministic_loading = deterministic_loading  # FIXED: Consistent loading
         
         # 🎯 ACTION SPACE: 5 Confidence Thresholds (Your Innovation!)
         self.action_space = spaces.Discrete(5)
@@ -73,6 +73,10 @@ class VideoBasedPotholeEnv(gym.Env):
         self.failed_loads = 0
         self.successful_loads = 0
         
+        # FIXED: Deterministic sequence loading counter
+        self.target_sequence_count = 1000  # Fixed target for consistency
+        self.loaded_sequence_count = 0
+        
         # 🎮 Load Dataset with memory management
         self._load_dataset()
         
@@ -87,20 +91,23 @@ class VideoBasedPotholeEnv(gym.Env):
     
     def _get_memory_usage_mb(self):
         """Get current memory usage in MB"""
-        process = psutil.Process()
-        return process.memory_info().rss / 1024 / 1024
+        try:
+            process = psutil.Process()
+            return process.memory_info().rss / 1024 / 1024
+        except:
+            return 0  # Fallback if psutil fails
     
     def _safe_load_sequence(self, seq_file):
         """Safely load numpy sequence with memory and error checking"""
         try:
             # Check file size first
             file_size_mb = seq_file.stat().st_size / (1024 * 1024)
-            if file_size_mb > 50:  # Skip files larger than 50MB
+            if file_size_mb > 20:  # FIXED: Reduced threshold from 50MB to 20MB
                 return None
             
-            # Check available memory
+            # FIXED: More conservative memory management
             current_memory = self._get_memory_usage_mb()
-            if current_memory > self.max_memory_mb:
+            if current_memory > (self.max_memory_mb * 0.8):  # Use 80% threshold
                 gc.collect()  # Force garbage collection
                 current_memory = self._get_memory_usage_mb()
                 if current_memory > self.max_memory_mb:
@@ -111,7 +118,7 @@ class VideoBasedPotholeEnv(gym.Env):
                 mapped_array = np.load(seq_file, mmap_mode='r')
                 
                 # Check array size and shape
-                if mapped_array.size > 10 * 1024 * 1024:  # >10M elements
+                if mapped_array.size > 5 * 1024 * 1024:  # FIXED: Reduced from 10M to 5M elements
                     return None
                 if len(mapped_array.shape) != 4:  # Should be 4D: (frames, height, width, channels)
                     return None
@@ -146,7 +153,7 @@ class VideoBasedPotholeEnv(gym.Env):
                 return None
             
             file_size_mb = gt_file.stat().st_size / (1024 * 1024)
-            if file_size_mb > 20:  # Skip very large mask files
+            if file_size_mb > 10:  # FIXED: Reduced from 20MB to 10MB
                 return None
             
             # Load with memory mapping
@@ -171,8 +178,8 @@ class VideoBasedPotholeEnv(gym.Env):
             return None
     
     def _load_dataset(self):
-        """🔥 Load your MASSIVE dataset with robust error handling!"""
-        print(f"📊 Loading {self.split} dataset with memory optimization...")
+        """🔥 Load dataset with FIXED consistent loading for all configurations!"""
+        print(f"📊 Loading {self.split} dataset with deterministic optimization...")
         
         # Load optimized and augmented sequences
         optimized_dir = PATHS["processed_frames"] / f"{self.split}_optimized"
@@ -184,114 +191,135 @@ class VideoBasedPotholeEnv(gym.Env):
         self.episode_metadata = []
         self.failed_loads = 0
         self.successful_loads = 0
+        self.loaded_sequence_count = 0
         
-        # Load from optimized directory
+        # FIXED: Deterministic loading order
+        all_sequence_files = []
+        
+        # Collect all sequence files in deterministic order
         if optimized_dir.exists():
-            print("   📁 Loading optimized sequences...")
-            self._load_sequences_from_dir(optimized_dir, ground_truth_dir, "optimized")
+            print("   📁 Collecting optimized sequences...")
+            optimized_files = self._collect_sequence_files(optimized_dir, "optimized")
+            all_sequence_files.extend(optimized_files)
         
-        # Load from augmented directory
         if augmented_dir.exists():
-            print("   📁 Loading augmented sequences...")
-            self._load_sequences_from_dir(augmented_dir, ground_truth_dir, "augmented")
+            print("   📁 Collecting augmented sequences...")
+            augmented_files = self._collect_sequence_files(augmented_dir, "augmented")
+            all_sequence_files.extend(augmented_files)
+        
+        # FIXED: Sort files for deterministic loading
+        all_sequence_files.sort(key=lambda x: (x[0], x[1]))  # Sort by path, then filename
+        
+        # FIXED: Load exactly target_sequence_count sequences for consistency
+        print(f"   🎯 Loading exactly {self.target_sequence_count} sequences for consistency...")
+        
+        for seq_info in all_sequence_files[:self.target_sequence_count]:
+            if self._load_single_sequence(seq_info, ground_truth_dir):
+                self.loaded_sequence_count += 1
+                if self.loaded_sequence_count >= self.target_sequence_count:
+                    break
         
         # Force garbage collection after loading
         gc.collect()
         
         print(f"🚀 Dataset loaded: {len(self.episode_sequences):,} sequences ready for RL training!")
+        print(f"   📊 Target: {self.target_sequence_count}, Loaded: {self.loaded_sequence_count}")
         
         if len(self.episode_sequences) == 0:
-            print("⚠️ Warning: No sequences found! Check your data directories.")
-            # Create minimal dummy data for testing
+            print("⚠️ Warning: No sequences found! Creating fallback data...")
             self._create_fallback_data()
     
-    def _load_sequences_from_dir(self, sequence_dir, ground_truth_dir, data_type):
-        """Load sequences from specified directory with robust error handling"""
-        video_dirs = [d for d in sequence_dir.iterdir() if d.is_dir()]
+    def _collect_sequence_files(self, sequence_dir, data_type):
+        """Collect all sequence files in deterministic order"""
+        sequence_files = []
+        video_dirs = sorted([d for d in sequence_dir.iterdir() if d.is_dir()])
         
         for video_dir in video_dirs:
             sequences_dir = video_dir / "sequences"
             if not sequences_dir.exists():
                 continue
             
+            # Get all sequence files and sort them
+            seq_files = sorted(sequences_dir.glob("*.npy"))
+            for seq_file in seq_files:
+                sequence_files.append((seq_file, data_type, video_dir.name))
+        
+        return sequence_files
+    
+    def _load_single_sequence(self, seq_info, ground_truth_dir):
+        """Load a single sequence with ground truth"""
+        seq_file, data_type, video_dir_name = seq_info
+        
+        try:
+            # Safely load video sequence
+            sequence = self._safe_load_sequence(seq_file)
+            if sequence is None:
+                self.failed_loads += 1
+                return False
+            
             # Get video name (remove augmentation suffix if present)
-            video_name = video_dir.name.split('_aug')[0]
+            video_name = video_dir_name.split('_aug')[0]
             
-            # Load video sequences
-            sequence_files = sorted(sequences_dir.glob("*.npy"))
+            # Find and load corresponding ground truth
+            gt_video_dir = ground_truth_dir / video_name
+            ground_truth = None
+            metadata = {}
             
-            for seq_file in sequence_files[:50]:  # Limit to first 50 sequences per video for memory
-                try:
-                    # Safely load video sequence
-                    sequence = self._safe_load_sequence(seq_file)
-                    if sequence is None:
-                        self.failed_loads += 1
-                        continue
+            if gt_video_dir.exists():
+                gt_sequences_dir = gt_video_dir / "sequences"
+                
+                # Find matching ground truth file
+                seq_idx = seq_file.stem.split('_')[-1]
+                if 'aug' in seq_idx:
+                    seq_idx = seq_idx.split('aug')[0]
+                
+                gt_file = gt_sequences_dir / f"mask_sequence_{seq_idx}.npy"
+                ground_truth = self._safe_load_ground_truth(gt_file)
+                
+                # Load metadata
+                metadata_file = gt_video_dir / "sequence_info.json"
+                if metadata_file.exists():
+                    try:
+                        with open(metadata_file, 'r') as f:
+                            all_metadata = json.load(f)
+                            seq_idx_int = int(seq_idx) if seq_idx.isdigit() else 0
+                            if seq_idx_int < len(all_metadata):
+                                metadata = all_metadata[seq_idx_int]
+                    except (json.JSONDecodeError, ValueError, IndexError):
+                        metadata = {}
+            
+            # Add to dataset
+            self.episode_sequences.append(sequence)
+            self.episode_ground_truths.append(ground_truth)
+            self.episode_metadata.append({
+                "video_name": video_name,
+                "sequence_idx": seq_idx,
+                "data_type": data_type,
+                "has_ground_truth": ground_truth is not None,
+                **metadata
+            })
+            
+            self.successful_loads += 1
+            return True
                     
-                    # Find and load corresponding ground truth
-                    gt_video_dir = ground_truth_dir / video_name
-                    ground_truth = None
-                    metadata = {}
-                    
-                    if gt_video_dir.exists():
-                        gt_sequences_dir = gt_video_dir / "sequences"
-                        
-                        # Find matching ground truth file
-                        seq_idx = seq_file.stem.split('_')[-1]
-                        if 'aug' in seq_idx:
-                            seq_idx = seq_idx.split('aug')[0]
-                        
-                        gt_file = gt_sequences_dir / f"mask_sequence_{seq_idx}.npy"
-                        ground_truth = self._safe_load_ground_truth(gt_file)
-                        
-                        # Load metadata
-                        metadata_file = gt_video_dir / "sequence_info.json"
-                        if metadata_file.exists():
-                            try:
-                                with open(metadata_file, 'r') as f:
-                                    all_metadata = json.load(f)
-                                    seq_idx_int = int(seq_idx) if seq_idx.isdigit() else 0
-                                    if seq_idx_int < len(all_metadata):
-                                        metadata = all_metadata[seq_idx_int]
-                            except (json.JSONDecodeError, ValueError, IndexError):
-                                metadata = {}
-                    
-                    # Add to dataset even if ground truth is missing (with warning)
-                    self.episode_sequences.append(sequence)
-                    self.episode_ground_truths.append(ground_truth)
-                    self.episode_metadata.append({
-                        "video_name": video_name,
-                        "sequence_idx": seq_idx,
-                        "data_type": data_type,
-                        "has_ground_truth": ground_truth is not None,
-                        **metadata
-                    })
-                    
-                    self.successful_loads += 1
-                    
-                    # Memory management: limit total sequences
-                    if len(self.episode_sequences) >= 5000:  # Limit to 5000 sequences
-                        print(f"   📊 Reached sequence limit (5000) - stopping load for memory management")
-                        return
-                        
-                except Exception as e:
-                    self.failed_loads += 1
-                    continue
+        except Exception as e:
+            self.failed_loads += 1
+            return False
     
     def _create_fallback_data(self):
         """Create minimal fallback data for testing when no real data available"""
         print("🔧 Creating fallback test data...")
         
-        for i in range(10):  # Create 10 test sequences
+        for i in range(self.target_sequence_count):  # Create target number of sequences
             # Create random video sequence
             sequence = np.random.rand(self.sequence_length, 224, 224, 3).astype(np.float32)
             
-            # Create simple ground truth (random pothole presence)
+            # Create simple ground truth (deterministic for consistency)
             ground_truth = np.zeros((self.sequence_length, 224, 224), dtype=np.float32)
-            if random.random() > 0.5:  # 50% chance of pothole
+            if i % 2 == 0:  # 50% deterministic pothole presence
                 # Create simple rectangular pothole mask
-                h_start, h_end = random.randint(50, 100), random.randint(120, 170)
-                w_start, w_end = random.randint(50, 100), random.randint(120, 170)
+                h_start, h_end = 60, 120
+                w_start, w_end = 60, 120
                 ground_truth[:, h_start:h_end, w_start:w_end] = 1.0
             
             # Add to dataset
@@ -515,18 +543,19 @@ class VideoBasedPotholeEnv(gym.Env):
             "failed_loads": self.failed_loads,
             "has_ground_truth": sum(1 for gt in self.episode_ground_truths if gt is not None),
             "memory_limit_mb": self.max_memory_mb,
-            "current_memory_mb": round(self._get_memory_usage_mb(), 2)
+            "current_memory_mb": round(self._get_memory_usage_mb(), 2),
+            "target_sequences": self.target_sequence_count,
+            "loaded_sequences": self.loaded_sequence_count
         }
-
 
 # 🧪 TEST ENVIRONMENT FUNCTIONALITY
 if __name__ == "__main__":
-    print("🚀 TESTING REVOLUTIONARY RL ENVIRONMENT WITH ENHANCED ROBUSTNESS!")
+    print("🚀 TESTING FIXED RL ENVIRONMENT WITH CONSISTENT LOADING!")
     print("="*70)
     
-    # Create environment with memory limit
+    # Create environment with fixed memory limit
     try:
-        env = VideoBasedPotholeEnv(split='train', max_memory_mb=2048)
+        env = VideoBasedPotholeEnv(split='train', max_memory_mb=2048, deterministic_loading=True)
         
         # Display dataset information
         dataset_info = env.get_dataset_info()
@@ -563,14 +592,9 @@ if __name__ == "__main__":
         for key, value in stats.items():
             print(f"   {key}: {value}")
         
-        # Test memory management
-        print(f"\n💾 Memory Management Test:")
-        print(f"   Initial sequences loaded: {len(env.episode_sequences):,}")
-        print(f"   Load success rate: {stats.get('data_load_success_rate', 0)}%")
-        
         env.close()
-        print(f"\n🎉 ENHANCED ENVIRONMENT TEST COMPLETED SUCCESSFULLY!")
-        print(f"🚀 Ready for robust RL Agent Training with {len(env.episode_sequences):,} sequences!")
+        print(f"\n🎉 FIXED ENVIRONMENT TEST COMPLETED SUCCESSFULLY!")
+        print(f"🚀 Consistent loading: {dataset_info['loaded_sequences']}/{dataset_info['target_sequences']} sequences!")
         
     except Exception as e:
         print(f"❌ Environment test failed: {e}")

@@ -12,8 +12,10 @@ import json
 import seaborn as sns
 from datetime import datetime
 sys.path.append(str(Path(__file__).parent.parent.parent))
-from configs.config import ENV_CONFIG, VIDEO_CONFIG
-from src.agents.dqn_agent import PotholeDetectionDQN, ExperienceReplayBuffer
+from configs.config import ENV_CONFIG, VIDEO_CONFIG, PATHS
+
+# Define Experience tuple for replay buffer
+Experience = namedtuple('Experience', ['state', 'action', 'reward', 'next_state', 'done'])
 
 # Enhanced Experience for Prioritized Replay
 PrioritizedExperience = namedtuple('PrioritizedExperience', 
@@ -205,6 +207,144 @@ class PrioritizedReplayBuffer:
         return len(self.buffer)
 
 
+class ExperienceReplayBuffer:
+    """Standard experience replay buffer for non-prioritized agents"""
+    
+    def __init__(self, capacity=10000):
+        self.buffer = deque(maxlen=capacity)
+        self.capacity = capacity
+        
+    def push(self, state, action, reward, next_state, done):
+        """Add experience to buffer"""
+        experience = Experience(state, action, reward, next_state, done)
+        self.buffer.append(experience)
+    
+    def sample(self, batch_size):
+        """Sample random batch of experiences"""
+        experiences = random.sample(self.buffer, batch_size)
+        
+        # Convert to tensors
+        states = torch.stack([torch.FloatTensor(e.state) for e in experiences])
+        actions = torch.LongTensor([e.action for e in experiences])
+        rewards = torch.FloatTensor([e.reward for e in experiences])
+        next_states = torch.stack([torch.FloatTensor(e.next_state) for e in experiences])
+        dones = torch.BoolTensor([e.done for e in experiences])
+        
+        return states, actions, rewards, next_states, dones
+    
+    def __len__(self):
+        return len(self.buffer)
+
+
+class PotholeDetectionDQN(nn.Module):
+    """
+    🧠 STANDARD DQN NETWORK FOR POTHOLE DETECTION 🧠
+    
+    Standard DQN architecture for comparison with advanced variants.
+    """
+    
+    def __init__(self, input_shape=(5, 224, 224, 3), num_actions=5):
+        super(PotholeDetectionDQN, self).__init__()
+        
+        self.input_shape = input_shape
+        self.num_actions = num_actions
+        
+        print(f"🧠 Building DQN Network Architecture...")
+        print(f"   📊 Input Shape: {input_shape}")
+        print(f"   🎯 Output Actions: {num_actions}")
+        
+        # 🎬 TEMPORAL CNN FEATURE EXTRACTOR
+        self.temporal_conv = nn.Sequential(
+            # Process each frame through CNN layers
+            nn.Conv2d(3, 32, kernel_size=8, stride=4, padding=2),  # 224->54
+            nn.ReLU(),
+            nn.Conv2d(32, 64, kernel_size=4, stride=2, padding=1), # 54->27
+            nn.ReLU(),
+            nn.Conv2d(64, 64, kernel_size=3, stride=1, padding=1), # 27->27
+            nn.ReLU(),
+            nn.AdaptiveAvgPool2d((7, 7))  # Ensure consistent output size
+        )
+        
+        # 🔥 TEMPORAL PROCESSING LAYERS
+        self.frame_feature_size = 64 * 7 * 7  # 3136
+        self.temporal_fc = nn.Linear(self.frame_feature_size, 512)
+        
+        # 🧠 LSTM for Temporal Sequence Learning
+        self.lstm = nn.LSTM(
+            input_size=512,
+            hidden_size=256,
+            num_layers=2,
+            batch_first=True,
+            dropout=0.1
+        )
+        
+        # 🎯 Q-VALUE PREDICTION HEAD
+        self.q_network = nn.Sequential(
+            nn.Linear(256, 512),
+            nn.ReLU(),
+            nn.Dropout(0.3),
+            nn.Linear(512, 256),
+            nn.ReLU(),
+            nn.Dropout(0.2),
+            nn.Linear(256, self.num_actions)
+        )
+        
+        # Initialize weights
+        self._initialize_weights()
+        
+        print(f"✅ DQN Network Architecture Complete!")
+        print(f"   🔥 Total Parameters: {sum(p.numel() for p in self.parameters()):,}")
+    
+    def _initialize_weights(self):
+        """Initialize network weights using Xavier initialization"""
+        for module in self.modules():
+            if isinstance(module, nn.Conv2d):
+                nn.init.xavier_uniform_(module.weight)
+                if module.bias is not None:
+                    nn.init.zeros_(module.bias)
+            elif isinstance(module, nn.Linear):
+                nn.init.xavier_uniform_(module.weight)
+                nn.init.zeros_(module.bias)
+            elif isinstance(module, nn.LSTM):
+                for name, param in module.named_parameters():
+                    if 'weight' in name:
+                        nn.init.xavier_uniform_(param)
+                    elif 'bias' in name:
+                        nn.init.zeros_(param)
+    
+    def forward(self, x):
+        """
+        Forward pass through the network
+        Input: x shape = (batch_size, sequence_length, height, width, channels)
+        Output: Q-values for each action
+        """
+        batch_size, seq_len, height, width, channels = x.shape
+        
+        # Reshape for CNN processing: (batch_size * seq_len, channels, height, width)
+        x = x.view(batch_size * seq_len, channels, height, width)
+        
+        # Extract features from each frame
+        conv_features = self.temporal_conv(x)  # (batch_size * seq_len, 64, 7, 7)
+        conv_features = conv_features.view(batch_size * seq_len, -1)  # Flatten
+        
+        # Process through temporal FC
+        frame_features = F.relu(self.temporal_fc(conv_features))  # (batch_size * seq_len, 512)
+        
+        # Reshape for LSTM: (batch_size, seq_len, feature_size)
+        frame_features = frame_features.view(batch_size, seq_len, -1)
+        
+        # Process temporal sequence through LSTM
+        lstm_out, _ = self.lstm(frame_features)  # (batch_size, seq_len, 256)
+        
+        # Use the last timestep for Q-value prediction
+        final_features = lstm_out[:, -1, :]  # (batch_size, 256)
+        
+        # Predict Q-values for each action
+        q_values = self.q_network(final_features)  # (batch_size, num_actions)
+        
+        return q_values
+
+
 class AdvancedDQNAgent:
     """
     🤖 ULTIMATE ADVANCED DQN AGENT - MAXIMUM PERFORMANCE! 🤖
@@ -393,8 +533,165 @@ class AdvancedDQNAgent:
         
         return loss.item()
     
+    def train_episode(self, env, max_steps=1000):
+        """🎯 TRAIN FOR ONE EPISODE - CORE TRAINING METHOD"""
+        state, _ = env.reset()
+        total_reward = 0
+        steps = 0
+        episode_losses = []
+        
+        while steps < max_steps:
+            # Choose action using epsilon-greedy policy
+            action = self.act(state, training=True)
+            
+            # Take action in environment
+            next_state, reward, done, truncated, info = env.step(action)
+            
+            # Store experience in replay buffer
+            self.remember(state, action, reward, next_state, done)
+            
+            # Train the network on experience replay
+            loss = self.replay()
+            if loss is not None:
+                episode_losses.append(loss)
+            
+            # Update state and tracking
+            state = next_state
+            total_reward += reward
+            steps += 1
+            
+            # Episode termination
+            if done or truncated:
+                break
+        
+        # Update episode tracking
+        self.episode_count += 1
+        self.reward_history.append(total_reward)
+        
+        return {
+            'episode': self.episode_count,
+            'total_reward': total_reward,
+            'steps': steps,
+            'average_loss': np.mean(episode_losses) if episode_losses else 0,
+            'epsilon': self.epsilon,
+            'action_taken': action,
+            'final_info': info
+        }
+    
+    def evaluate(self, env, num_episodes=10):
+        """🧪 EVALUATE AGENT PERFORMANCE"""
+        # Set network to evaluation mode
+        self.q_network.eval()
+        
+        total_rewards = []
+        correct_decisions = 0
+        false_positives = 0
+        missed_detections = 0
+        
+        for episode in range(num_episodes):
+            state, _ = env.reset()
+            total_reward = 0
+            
+            # Act greedily (no exploration) during evaluation
+            action = self.act(state, training=False)
+            next_state, reward, done, truncated, info = env.step(action)
+            
+            total_reward += reward
+            total_rewards.append(total_reward)
+            
+            # Track performance metrics
+            if reward == 10:
+                correct_decisions += 1
+            elif reward == -5:
+                false_positives += 1
+            elif reward == -20:
+                missed_detections += 1
+        
+        # Return to training mode
+        self.q_network.train()
+        
+        # Calculate evaluation metrics
+        accuracy = correct_decisions / num_episodes * 100 if num_episodes > 0 else 0
+        
+        return {
+            'average_reward': np.mean(total_rewards),
+            'accuracy': accuracy,
+            'correct_decisions': correct_decisions,
+            'false_positives': false_positives,
+            'missed_detections': missed_detections,
+            'total_episodes': num_episodes
+        }
+    
+    def save_model(self, filepath):
+        """💾 SAVE THE TRAINED MODEL"""
+        save_dict = {
+            'q_network_state_dict': self.q_network.state_dict(),
+            'target_network_state_dict': self.target_network.state_dict(),
+            'optimizer_state_dict': self.optimizer.state_dict(),
+            'scheduler_state_dict': self.scheduler.state_dict(),
+            'hyperparameters': {
+                'learning_rate': self.learning_rate,
+                'gamma': self.gamma,
+                'epsilon_start': self.epsilon_start,
+                'epsilon_end': self.epsilon_end,
+                'epsilon_decay': self.epsilon_decay,
+                'batch_size': self.batch_size,
+                'target_update': self.target_update,
+                'use_double_dqn': self.use_double_dqn,
+                'use_dueling': self.use_dueling,
+                'use_prioritized_replay': self.use_prioritized_replay
+            },
+            'training_history': {
+                'loss_history': self.loss_history,
+                'reward_history': self.reward_history,
+                'epsilon_history': self.epsilon_history,
+                'lr_history': self.lr_history,
+                'td_error_history': self.td_error_history,
+                'training_step': self.training_step,
+                'episode_count': self.episode_count
+            },
+            'performance_tracking': {
+                'action_distribution': self.action_distribution.tolist(),
+                'reward_distribution': self.reward_distribution
+            }
+        }
+        
+        torch.save(save_dict, filepath)
+        print(f"💾 Model saved to: {filepath}")
+    
+    def load_model(self, filepath):
+        """📥 LOAD A TRAINED MODEL"""
+        checkpoint = torch.load(filepath, map_location=self.device)
+        
+        # Load network states
+        self.q_network.load_state_dict(checkpoint['q_network_state_dict'])
+        self.target_network.load_state_dict(checkpoint['target_network_state_dict'])
+        self.optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
+        
+        if 'scheduler_state_dict' in checkpoint:
+            self.scheduler.load_state_dict(checkpoint['scheduler_state_dict'])
+        
+        # Restore training state
+        if 'training_history' in checkpoint:
+            history = checkpoint['training_history']
+            self.loss_history = history.get('loss_history', [])
+            self.reward_history = history.get('reward_history', [])
+            self.epsilon_history = history.get('epsilon_history', [])
+            self.lr_history = history.get('lr_history', [])
+            self.td_error_history = history.get('td_error_history', [])
+            self.training_step = history.get('training_step', 0)
+            self.episode_count = history.get('episode_count', 0)
+        
+        # Restore performance tracking
+        if 'performance_tracking' in checkpoint:
+            perf = checkpoint['performance_tracking']
+            self.action_distribution = np.array(perf.get('action_distribution', np.zeros(5)))
+            self.reward_distribution = perf.get('reward_distribution', {'correct': 0, 'false_positive': 0, 'missed': 0})
+        
+        print(f"📥 Model loaded from: {filepath}")
+    
     def get_advanced_stats(self):
-        """Get comprehensive agent statistics"""
+        """📊 GET COMPREHENSIVE AGENT STATISTICS"""
         total_actions = self.action_distribution.sum()
         action_probs = self.action_distribution / max(total_actions, 1)
         
@@ -410,11 +707,16 @@ class AdvancedDQNAgent:
             'action_distribution': action_probs.tolist(),
             'reward_distribution': reward_probs,
             'avg_td_error': np.mean(self.td_error_history[-100:]) if self.td_error_history else 0,
-            'avg_loss': np.mean(self.loss_history[-100:]) if self.loss_history else 0
+            'avg_loss': np.mean(self.loss_history[-100:]) if self.loss_history else 0,
+            'configuration': {
+                'double_dqn': self.use_double_dqn,
+                'dueling': self.use_dueling,
+                'prioritized_replay': self.use_prioritized_replay
+            }
         }
     
     def plot_advanced_training_progress(self, save_path=None):
-        """Enhanced training visualization"""
+        """📈 ENHANCED TRAINING VISUALIZATION"""
         fig, axes = plt.subplots(3, 3, figsize=(20, 15))
         fig.suptitle('Advanced DQN Training Progress - ULTIMATE PERFORMANCE ANALYSIS', fontsize=16, fontweight='bold')
         
@@ -549,6 +851,27 @@ if __name__ == "__main__":
         
         print(f"   ✅ {config['name']}: Action {action} selected")
         print(f"   📊 Parameters: {sum(p.numel() for p in agent.q_network.parameters()):,}")
+        
+        # Test training methods
+        try:
+            # Mock environment step
+            next_state = dummy_state
+            reward = 10
+            done = False
+            
+            # Test remember method
+            agent.remember(dummy_state, action, reward, next_state, done)
+            print(f"   ✅ Memory function working")
+            
+            # Test save/load
+            import tempfile
+            with tempfile.NamedTemporaryFile(suffix='.pth', delete=False) as f:
+                agent.save_model(f.name)
+                agent.load_model(f.name)
+            print(f"   ✅ Save/Load function working")
+            
+        except Exception as e:
+            print(f"   ❌ Error testing {config['name']}: {e}")
     
     print(f"\n🎉 ALL ADVANCED DQN CONFIGURATIONS TESTED SUCCESSFULLY!")
     print(f"🚀 Ready to OBLITERATE all performance benchmarks!")

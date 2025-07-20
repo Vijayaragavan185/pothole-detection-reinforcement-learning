@@ -30,15 +30,17 @@ VIDEO_CONFIG = {
     "augmentation": True
 }
 
-# RL Environment configuration
+# RL Environment configuration - FIXED VALUES
 ENV_CONFIG = {
     "name": "VideoBasedPotholeEnv-v0",
     "action_space_size": 5,    # [0.3, 0.5, 0.7, 0.8, 0.9] thresholds
     "action_thresholds": [0.3, 0.5, 0.7, 0.8, 0.9],
-    "reward_correct": 10,
+    "reward_correct": 10,      # FIXED: Consistent reward values
     "reward_false_positive": -5,
     "reward_missed": -20,
-    "max_steps_per_episode": 100
+    "max_steps_per_episode": 100,
+    "deterministic_loading": True,  # FIXED: Ensure consistent data loading
+    "target_sequence_count": 1000   # FIXED: Consistent sequence count across configs
 }
 
 # Model configuration
@@ -50,22 +52,68 @@ MODEL_CONFIG = {
     "learning_rate": 0.001
 }
 
-# Training configuration
+# Training configuration - FIXED BASE VALUES
 TRAINING_CONFIG = {
     "total_timesteps": 50000,
-    "batch_size": 32,
-    "buffer_size": 10000,
+    "batch_size": 16,          # FIXED: Consistent base batch size
+    "buffer_size": 5000,       # FIXED: Consistent base buffer size
     "learning_starts": 1000,
-    "target_update_interval": 1000,
+    "target_update_interval": 100,  # FIXED: Consistent target update
     "exploration_fraction": 0.1,
-    "exploration_final_eps": 0.02
+    "exploration_final_eps": 0.01,  # FIXED: Consistent epsilon end
+    "learning_rate": 0.0005,        # FIXED: Consistent learning rate
+    "gamma": 0.99,                  # FIXED: Consistent discount factor
+    "epsilon_decay": 0.995          # FIXED: Consistent epsilon decay
+}
+
+# DQN Configuration variants - FIXED HYPERPARAMETERS
+DQN_CONFIGS = {
+    "base": {
+        "learning_rate": 0.0005,
+        "gamma": 0.99,
+        "epsilon_start": 1.0,
+        "epsilon_end": 0.01,
+        "epsilon_decay": 0.995,
+        "batch_size": 16,
+        "target_update": 100,
+        "memory_size": 5000
+    },
+    "standard": {
+        "use_double_dqn": False,
+        "use_dueling": False,
+        "use_prioritized_replay": False
+    },
+    "double": {
+        "use_double_dqn": True,
+        "use_dueling": False,
+        "use_prioritized_replay": False
+    },
+    "dueling": {
+        "use_double_dqn": False,
+        "use_dueling": True,
+        "use_prioritized_replay": False
+    },
+    "prioritized": {
+        "use_double_dqn": True,
+        "use_dueling": False,
+        "use_prioritized_replay": True
+    },
+    "ultimate": {
+        "use_double_dqn": True,
+        "use_dueling": True,
+        "use_prioritized_replay": True,
+        "learning_rate": 0.0003,  # Slightly lower for stability
+        "memory_size": 10000,     # Larger memory
+        "batch_size": 32,         # Larger batch
+        "target_update": 75       # More frequent updates
+    }
 }
 
 # Paths
 PATHS = {
     "raw_videos": DATA_DIR / "raw_videos",
     "processed_frames": DATA_DIR / "processed_frames", 
-    "ground_truth": DATA_DIR / "ground_truth_masks",
+    "ground_truth": DATA_DIR / "ground_truth",
     "splits": DATA_DIR / "splits",
     "models": RESULTS_DIR / "models",
     "logs": RESULTS_DIR / "logs",
@@ -75,3 +123,30 @@ PATHS = {
 # Create directories if they don't exist
 for path in PATHS.values():
     path.mkdir(parents=True, exist_ok=True)
+
+# Memory and performance settings
+PERFORMANCE_CONFIG = {
+    "max_memory_mb": 2048,      # FIXED: Consistent memory limit
+    "max_sequences_per_load": 1000,  # FIXED: Consistent sequence limit
+    "deterministic_loading": True,    # FIXED: Ensure reproducible results
+    "memory_threshold": 0.8,          # FIXED: Conservative memory usage
+    "gc_frequency": 100,              # Garbage collection frequency
+    "file_size_limit_mb": 20,         # FIXED: Conservative file size limit
+    "array_size_limit": 5 * 1024 * 1024  # FIXED: Conservative array size limit (5M elements)
+}
+
+# Debugging and logging
+DEBUG_CONFIG = {
+    "verbose_loading": True,
+    "log_memory_usage": True,
+    "save_debug_info": True,
+    "validate_data_consistency": True,
+    "track_performance_metrics": True
+}
+
+# Export key configurations for easy access
+__all__ = [
+    'DATASET_CONFIG', 'VIDEO_CONFIG', 'ENV_CONFIG', 'MODEL_CONFIG',
+    'TRAINING_CONFIG', 'DQN_CONFIGS', 'PATHS', 'PERFORMANCE_CONFIG',
+    'DEBUG_CONFIG'
+]
