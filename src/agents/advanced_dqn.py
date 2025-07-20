@@ -539,39 +539,31 @@ class AdvancedDQNAgent:
         self.epsilon_history.append(self.epsilon)
         
         return loss.item()
-    
+    # Add these methods to AdvancedDQNAgent class:
+
     def train_episode(self, env, max_steps=1000):
-        """🎯 TRAIN FOR ONE EPISODE - CORE TRAINING METHOD"""
+        """Train for one episode"""
         state, _ = env.reset()
         total_reward = 0
         steps = 0
         episode_losses = []
         
         while steps < max_steps:
-            # Choose action using epsilon-greedy policy
             action = self.act(state, training=True)
-            
-            # Take action in environment
             next_state, reward, done, truncated, info = env.step(action)
-            
-            # Store experience in replay buffer
             self.remember(state, action, reward, next_state, done)
             
-            # Train the network on experience replay
             loss = self.replay()
             if loss is not None:
                 episode_losses.append(loss)
             
-            # Update state and tracking
             state = next_state
             total_reward += reward
             steps += 1
             
-            # Episode termination
             if done or truncated:
                 break
         
-        # Update episode tracking
         self.episode_count += 1
         self.reward_history.append(total_reward)
         
@@ -584,12 +576,10 @@ class AdvancedDQNAgent:
             'action_taken': action,
             'final_info': info
         }
-    
+
     def evaluate(self, env, num_episodes=10):
-        """🧪 EVALUATE AGENT PERFORMANCE"""
-        # Set network to evaluation mode
+        """Evaluate agent performance"""
         self.q_network.eval()
-        
         total_rewards = []
         correct_decisions = 0
         false_positives = 0
@@ -597,16 +587,10 @@ class AdvancedDQNAgent:
         
         for episode in range(num_episodes):
             state, _ = env.reset()
-            total_reward = 0
-            
-            # Act greedily (no exploration) during evaluation
             action = self.act(state, training=False)
             next_state, reward, done, truncated, info = env.step(action)
             
-            total_reward += reward
-            total_rewards.append(total_reward)
-            
-            # Track performance metrics
+            total_rewards.append(reward)
             if reward == 10:
                 correct_decisions += 1
             elif reward == -5:
@@ -614,20 +598,18 @@ class AdvancedDQNAgent:
             elif reward == -20:
                 missed_detections += 1
         
-        # Return to training mode
         self.q_network.train()
-        
-        # Calculate evaluation metrics
-        accuracy = correct_decisions / num_episodes * 100 if num_episodes > 0 else 0
         
         return {
             'average_reward': np.mean(total_rewards),
-            'accuracy': accuracy,
+            'accuracy': correct_decisions / num_episodes * 100,
             'correct_decisions': correct_decisions,
             'false_positives': false_positives,
             'missed_detections': missed_detections,
             'total_episodes': num_episodes
         }
+
+    
     
     def save_model(self, filepath):
         """💾 SAVE THE TRAINED MODEL"""

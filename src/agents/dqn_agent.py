@@ -357,9 +357,8 @@ class DQNAgent:
         }
     
     def evaluate(self, env, num_episodes=10):
-        """Evaluate agent performance"""
+        """FIXED: Complete episode evaluation"""
         self.q_network.eval()
-        
         total_rewards = []
         correct_decisions = 0
         false_positives = 0
@@ -367,26 +366,36 @@ class DQNAgent:
         
         for episode in range(num_episodes):
             state, _ = env.reset()
-            total_reward = 0
+            episode_reward = 0
+            steps = 0
+            max_eval_steps = 100  # Allow more steps for evaluation
             
-            # Act greedily (no exploration)
-            action = self.act(state, training=False)
-            next_state, reward, done, truncated, info = env.step(action)
+            # ✅ COMPLETE EPISODE LOOP
+            while steps < max_eval_steps:
+                action = self.act(state, training=False)
+                next_state, reward, done, truncated, info = env.step(action)
+                
+                episode_reward += reward
+                state = next_state
+                steps += 1
+                
+                # Track performance
+                if reward == 10:
+                    correct_decisions += 1
+                elif reward == -5:
+                    false_positives += 1
+                elif reward == -20:
+                    missed_detections += 1
+                
+                if done or truncated:
+                    break
             
-            total_reward += reward
-            total_rewards.append(total_reward)
-            
-            # Track performance
-            if reward == 10:
-                correct_decisions += 1
-            elif reward == -5:
-                false_positives += 1
-            elif reward == -20:
-                missed_detections += 1
+            total_rewards.append(episode_reward)
         
         self.q_network.train()
         
-        accuracy = correct_decisions / num_episodes * 100
+        total_decisions = correct_decisions + false_positives + missed_detections
+        accuracy = (correct_decisions / max(total_decisions, 1)) * 100
         
         return {
             'average_reward': np.mean(total_rewards),
@@ -394,8 +403,10 @@ class DQNAgent:
             'correct_decisions': correct_decisions,
             'false_positives': false_positives,
             'missed_detections': missed_detections,
-            'total_episodes': num_episodes
+            'total_episodes': num_episodes,
+            'total_decisions': total_decisions
         }
+
     
     def save_model(self, filepath):
         """Save the trained model"""
