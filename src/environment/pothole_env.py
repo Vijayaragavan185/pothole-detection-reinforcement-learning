@@ -144,7 +144,7 @@ class VideoBasedPotholeEnv(gym.Env):
                 
         except Exception as e:
             return None
-    
+
     def _safe_load_ground_truth(self, gt_file):
         """Safely load ground truth mask with validation"""
         try:
@@ -307,30 +307,39 @@ class VideoBasedPotholeEnv(gym.Env):
             return False
     
     def _create_fallback_data(self):
-        """Create minimal fallback data for testing when no real data available"""
-        print("🔧 Creating fallback test data...")
+        """Create simple, reliable fallback data"""
+        print("🔧 Creating simplified fallback test data...")
         
-        for i in range(self.target_sequence_count):  # Create target number of sequences
-            # Create random video sequence
+        # Define target sequence count if not already defined
+        if not hasattr(self, 'target_sequence_count'):
+            self.target_sequence_count = 1000  # Default target
+        
+        # Create only a reasonable number of sequences
+        num_sequences = min(100, self.target_sequence_count)
+        
+        for i in range(num_sequences):
+            # Create simple, valid video sequence
             sequence = np.random.rand(self.sequence_length, 224, 224, 3).astype(np.float32)
+            sequence = np.clip(sequence, 0.0, 1.0)  # Ensure valid range
             
-            # Create simple ground truth (deterministic for consistency)
+            # Create simple ground truth
             ground_truth = np.zeros((self.sequence_length, 224, 224), dtype=np.float32)
-            if i % 2 == 0:  # 50% deterministic pothole presence
-                # Create simple rectangular pothole mask
-                h_start, h_end = 60, 120
-                w_start, w_end = 60, 120
-                ground_truth[:, h_start:h_end, w_start:w_end] = 1.0
+            if i % 2 == 0:  # Every other sequence has a pothole
+                ground_truth[:, 80:120, 80:120] = 1.0  # Simple square pothole
             
-            # Add to dataset
-            self.episode_sequences.append(sequence)
-            self.episode_ground_truths.append(ground_truth)
-            self.episode_metadata.append({
-                "video_name": f"fallback_{i:03d}",
-                "sequence_idx": "000",
-                "data_type": "fallback",
-                "has_ground_truth": True
-            })
+            # Add to dataset with proper validation
+            if sequence.shape == (self.sequence_length, 224, 224, 3):
+                self.episode_sequences.append(sequence)
+                self.episode_ground_truths.append(ground_truth)
+                self.episode_metadata.append({
+                    "video_name": f"fallback_{i:03d}",
+                    "sequence_idx": f"{i:03d}",
+                    "data_type": "fallback",
+                    "has_ground_truth": True
+                })
+        
+        print(f"✅ Created {len(self.episode_sequences)} fallback sequences")
+
     
     def reset(self, seed=None, options=None):
         """🔄 Reset environment for new episode"""
