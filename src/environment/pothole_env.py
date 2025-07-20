@@ -439,40 +439,64 @@ class VideoBasedPotholeEnv(gym.Env):
 
     
     def _ground_truth_has_pothole(self):
-        """Check if ground truth indicates pothole presence"""
+        """Enhanced ground truth detection with debugging"""
         if self.current_ground_truth is None:
+            print("  GROUND TRUTH: None - no mask data")
             return False
         
         pothole_pixels = np.sum(self.current_ground_truth > 0)
         total_pixels = self.current_ground_truth.size
         pothole_ratio = pothole_pixels / total_pixels if total_pixels > 0 else 0
         
-        return pothole_ratio > 0.01  # 1% threshold
+        has_pothole = pothole_ratio > 0.01  # 1% threshold
+        
+        # Debug output
+        print(f"  GROUND TRUTH: {pothole_pixels}/{total_pixels} pixels = "
+            f"{pothole_ratio:.4f} ratio → {has_pothole}")
+        
+        return has_pothole
+
+
     
     def _calculate_reward(self, agent_detects_pothole):
-        """FIXED: Enhanced reward structure with shaping"""
+        """FIXED: Proper reward calculation with debugging"""
         if self.current_ground_truth is None:
-            return 0
-
+            print("⚠️ WARNING: No ground truth available!")
+            return 0  # Changed from 1.0 to 0 for missing ground truth
+        
         ground_truth_has_pothole = self._ground_truth_has_pothole()
         
-        # ✅ ENHANCED: Reward shaping for better learning
+        # Debug output for troubleshooting
+        print(f"REWARD DEBUG: Agent Decision={agent_detects_pothole}, "
+            f"Ground Truth={ground_truth_has_pothole}")
+        
         if ground_truth_has_pothole and agent_detects_pothole:
             # TRUE POSITIVE: Correctly detected pothole
             self.total_correct_detections += 1
-            return self.reward_correct  # +10
+            reward = self.reward_correct  # +10
+            print(f"  → TRUE POSITIVE: +{reward}")
+            return reward
+            
         elif not ground_truth_has_pothole and not agent_detects_pothole:
             # TRUE NEGATIVE: Correctly identified no pothole
             self.total_correct_detections += 1
-            return self.reward_correct  # +10
+            reward = self.reward_correct  # +10
+            print(f"  → TRUE NEGATIVE: +{reward}")
+            return reward
+            
         elif not ground_truth_has_pothole and agent_detects_pothole:
             # FALSE POSITIVE: Incorrectly detected pothole
             self.total_false_positives += 1
-            return self.reward_false_positive  # -5
-        else:
-            # FALSE NEGATIVE: Missed actual pothole (dangerous!)
+            reward = self.reward_false_positive  # -5
+            print(f"  → FALSE POSITIVE: {reward}")
+            return reward
+            
+        else:  # ground_truth_has_pothole and not agent_detects_pothole
+            # FALSE NEGATIVE: Missed actual pothole (most dangerous!)
             self.total_missed_detections += 1
-            return self.reward_missed  # -20
+            reward = self.reward_missed  # -20
+            print(f"  → FALSE NEGATIVE: {reward}")
+            return reward
 
     
     def close(self):
