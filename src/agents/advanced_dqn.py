@@ -452,16 +452,18 @@ class AdvancedDQNAgent:
         return action
     
     def remember(self, state, action, reward, next_state, done):
-        """Store experience in replay buffer"""
+        state      = self._to_canonical(state)
+        next_state = self._to_canonical(next_state)
         self.memory.push(state, action, reward, next_state, done)
-        
-        # Track reward distribution
-        if reward == 10:
-            self.reward_distribution['correct'] += 1
-        elif reward == -5:
-            self.reward_distribution['false_positive'] += 1
-        elif reward == -20:
-            self.reward_distribution['missed'] += 1
+
+    def _to_canonical(self, array):
+        """Guarantee (5,224,224,3) float32 layout."""
+        if array.ndim == 3:                       # (5,224,224)  → add channel dim
+            array = np.expand_dims(array, -1)     # (5,224,224,1)
+            array = np.repeat(array, 3, axis=-1)  # grayscale → 3-channel
+        if array.shape != (5,224,224,3):
+            raise ValueError(f"Bad state shape {array.shape}")
+        return array.astype(np.float32)
     
     def replay(self):
         """Advanced training with Double DQN and Prioritized Replay"""

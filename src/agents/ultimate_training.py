@@ -44,8 +44,8 @@ class FixedUltimateTrainer:
             # FIXED: Use correct environment parameters
             env = VideoBasedPotholeEnv(
                 split="train",
-                max_memory_mb=8000,         # generous memory cap
-                target_sequences=1000,      # exact episode count each run
+                max_memory_mb=4096,         # generous memory cap
+                target_sequences=22000,      # exact episode count each run
                 force_synthetic=False       # change to True for pure-synthetic runs
             )
             
@@ -74,7 +74,7 @@ class FixedUltimateTrainer:
             
             for episode in range(1, episodes + 1):
                 # Train episode
-                episode_result = agent.train_episode(env, max_steps=1)
+                episode_result = agent.train_episode(env, max_steps=25)
                 training_results.append(episode_result)
                 
                 # Progress logging

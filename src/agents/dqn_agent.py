@@ -250,8 +250,18 @@ class DQNAgent:
             return q_values.argmax().item()
     
     def remember(self, state, action, reward, next_state, done):
-        """Store experience in replay buffer"""
+        state      = self._to_canonical(state)
+        next_state = self._to_canonical(next_state)
         self.memory.push(state, action, reward, next_state, done)
+
+    def _to_canonical(self, array):
+        """Guarantee (5,224,224,3) float32 layout."""
+        if array.ndim == 3:                       # (5,224,224)  → add channel dim
+            array = np.expand_dims(array, -1)     # (5,224,224,1)
+            array = np.repeat(array, 3, axis=-1)  # grayscale → 3-channel
+        if array.shape != (5,224,224,3):
+            raise ValueError(f"Bad state shape {array.shape}")
+        return array.astype(np.float32)
     
     def replay(self):
         """Train the network on a batch of experiences"""

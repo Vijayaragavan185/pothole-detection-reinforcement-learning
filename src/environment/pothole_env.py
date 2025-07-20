@@ -25,12 +25,13 @@ class VideoBasedPotholeEnv(gym.Env):
     #                        ░░ INITIALISATION ░░                           #
     # --------------------------------------------------------------------- #
     def __init__(self, split: str = "train", render_mode: str | None = None,
-                 max_memory_mb: int = 2_048):
+                 max_memory_mb: int = 4096, lazy: bool = True):
         super().__init__()
 
         self.split = split
         self.render_mode = render_mode
         self.max_memory_mb = max_memory_mb
+        self.lazy = lazy
 
         # Core video parameters ------------------------------------------------
         self.sequence_length = VIDEO_CONFIG["sequence_length"]          # 5
@@ -345,7 +346,7 @@ class VideoBasedPotholeEnv(gym.Env):
 #                        ░░ QUICK SELF-TEST ░░                              #
 # ------------------------------------------------------------------------- #
 if __name__ == "__main__":
-    env = VideoBasedPotholeEnv(split="train", max_memory_mb=1024)
+    env = VideoBasedPotholeEnv(split="train", max_memory_mb=4096, lazy=True, verbose=True)
     obs, info = env.reset()
     print("Observation shape:", obs.shape, "| Episode info keys:", list(info.keys()))
     for a in range(env.action_space.n):

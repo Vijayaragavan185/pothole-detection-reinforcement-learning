@@ -23,7 +23,7 @@ def train_dqn_agent(episodes=500, save_interval=50, eval_interval=25):
     
     # Create environment and agent
     print("🎯 Initializing Environment and Agent...")
-    env = VideoBasedPotholeEnv(split='train', max_memory_mb=2048)
+    env = VideoBasedPotholeEnv(split='train', max_memory_mb=4096, lazy=True, verbose=True)
     agent = DQNAgent(
         input_shape=(5, 224, 224, 3),
         num_actions=5,
@@ -51,7 +51,7 @@ def train_dqn_agent(episodes=500, save_interval=50, eval_interval=25):
     print(f"\n🔥 BEGINNING TRAINING LOOP...")
     for episode in range(1, episodes + 1):
         # Train one episode
-        episode_result = agent.train_episode(env, max_steps=1)
+        episode_result = agent.train_episode(env, max_steps=25)
         training_results.append(episode_result)
         
         # Print progress
