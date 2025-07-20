@@ -1,4 +1,3 @@
-import os
 from pathlib import Path
 
 # Project root directory
@@ -24,23 +23,23 @@ DATASET_CONFIG = {
 
 # Video processing configuration
 VIDEO_CONFIG = {
-    "input_size": (224, 224),  # ResNet-18 input size
-    "sequence_length": 5,      # Temporal frames for RL
-    "overlap": 2,              # Frame overlap for sequences
+    "input_size": (224, 224),
+    "sequence_length": 5,
+    "overlap": 2,
     "augmentation": True
 }
 
-# RL Environment configuration - FIXED VALUES
+# RL Environment configuration
 ENV_CONFIG = {
     "name": "VideoBasedPotholeEnv-v0",
-    "action_space_size": 5,    # [0.3, 0.5, 0.7, 0.8, 0.9] thresholds
+    "action_space_size": 5,
     "action_thresholds": [0.3, 0.5, 0.7, 0.8, 0.9],
-    "reward_correct": 10,      # FIXED: Consistent reward values
+    "reward_correct": 10,
     "reward_false_positive": -5,
     "reward_missed": -20,
     "max_steps_per_episode": 100,
-    "deterministic_loading": True,  # FIXED: Ensure consistent data loading
-    "target_sequence_count": 1000   # FIXED: Consistent sequence count across configs
+    "deterministic_loading": True,
+    "target_sequence_count": 1000
 }
 
 # Model configuration
@@ -52,60 +51,50 @@ MODEL_CONFIG = {
     "learning_rate": 0.001
 }
 
-# Training configuration - FIXED BASE VALUES
+# Training configuration (non-DQN specific)
 TRAINING_CONFIG = {
     "total_timesteps": 50000,
-    "batch_size": 16,          # FIXED: Consistent base batch size
-    "buffer_size": 5000,       # FIXED: Consistent base buffer size
     "learning_starts": 1000,
-    "target_update_interval": 100,  # FIXED: Consistent target update
-    "exploration_fraction": 0.1,
-    "exploration_final_eps": 0.01,  # FIXED: Consistent epsilon end
-    "learning_rate": 0.0005,        # FIXED: Consistent learning rate
-    "gamma": 0.99,                  # FIXED: Consistent discount factor
-    "epsilon_decay": 0.995          # FIXED: Consistent epsilon decay
+    "exploration_fraction": 0.1
 }
 
-# DQN Configuration variants - FIXED HYPERPARAMETERS
+# ✅ FIXED: Complete DQN configurations
+BASE_DQN = {
+    "input_shape": (5, 224, 224, 3),
+    "num_actions": 5,
+    "learning_rate": 0.0005,
+    "gamma": 0.99,
+    "epsilon_start": 1.0,
+    "epsilon_end": 0.01,
+    "epsilon_decay": 0.995,
+    "batch_size": 16,
+    "target_update": 100,
+    "memory_size": 5000
+}
+
 DQN_CONFIGS = {
-    "base": {
-        "learning_rate": 0.0005,
-        "gamma": 0.99,
-        "epsilon_start": 1.0,
-        "epsilon_end": 0.01,
-        "epsilon_decay": 0.995,
-        "batch_size": 16,
-        "target_update": 100,
-        "memory_size": 5000
-    },
-    "standard": {
+    "STANDARD_DQN": {
+        **BASE_DQN,
         "use_double_dqn": False,
         "use_dueling": False,
         "use_prioritized_replay": False
     },
-    "double": {
-        "use_double_dqn": True,
-        "use_dueling": False,
-        "use_prioritized_replay": False
-    },
-    "dueling": {
+    "DUELING_DQN": {
+        **BASE_DQN,
         "use_double_dqn": False,
         "use_dueling": True,
-        "use_prioritized_replay": False
+        "use_prioritized_replay": False,
+        "memory_size": 8000
     },
-    "prioritized": {
-        "use_double_dqn": True,
-        "use_dueling": False,
-        "use_prioritized_replay": True
-    },
-    "ultimate": {
+    "ULTIMATE_DQN": {
+        **BASE_DQN,
         "use_double_dqn": True,
         "use_dueling": True,
         "use_prioritized_replay": True,
-        "learning_rate": 0.0003,  # Slightly lower for stability
-        "memory_size": 10000,     # Larger memory
-        "batch_size": 32,         # Larger batch
-        "target_update": 75       # More frequent updates
+        "learning_rate": 0.0003,
+        "memory_size": 10000,
+        "batch_size": 32,
+        "target_update": 75
     }
 }
 
@@ -124,18 +113,17 @@ PATHS = {
 for path in PATHS.values():
     path.mkdir(parents=True, exist_ok=True)
 
-# Memory and performance settings
+# Performance and debug configs
 PERFORMANCE_CONFIG = {
-    "max_memory_mb": 2048,      # FIXED: Consistent memory limit
-    "max_sequences_per_load": 1000,  # FIXED: Consistent sequence limit
-    "deterministic_loading": True,    # FIXED: Ensure reproducible results
-    "memory_threshold": 0.8,          # FIXED: Conservative memory usage
-    "gc_frequency": 100,              # Garbage collection frequency
-    "file_size_limit_mb": 20,         # FIXED: Conservative file size limit
-    "array_size_limit": 5 * 1024 * 1024  # FIXED: Conservative array size limit (5M elements)
+    "max_memory_mb": 2048,
+    "max_sequences_per_load": 1000,
+    "deterministic_loading": True,
+    "memory_threshold": 0.8,
+    "gc_frequency": 100,
+    "file_size_limit_mb": 20,
+    "array_size_limit": 5 * 1024 * 1024
 }
 
-# Debugging and logging
 DEBUG_CONFIG = {
     "verbose_loading": True,
     "log_memory_usage": True,
@@ -144,9 +132,9 @@ DEBUG_CONFIG = {
     "track_performance_metrics": True
 }
 
-# Export key configurations for easy access
+# Export key configurations
 __all__ = [
     'DATASET_CONFIG', 'VIDEO_CONFIG', 'ENV_CONFIG', 'MODEL_CONFIG',
     'TRAINING_CONFIG', 'DQN_CONFIGS', 'PATHS', 'PERFORMANCE_CONFIG',
-    'DEBUG_CONFIG'
+    'DEBUG_CONFIG', 'BASE_DQN'
 ]
