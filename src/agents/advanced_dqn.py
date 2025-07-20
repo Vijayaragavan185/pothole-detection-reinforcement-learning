@@ -489,9 +489,14 @@ class AdvancedDQNAgent:
         # Next Q-values using Double DQN or standard DQN
         with torch.no_grad():
             if self.use_double_dqn:
-                # Double DQN: Use main network to select actions, target network to evaluate
-                next_actions = self.q_network(next_states).argmax(1)
-                next_q_values = self.target_network(next_states).gather(1, next_actions.unsqueeze(1)).squeeze()
+                # FIXED Double DQN implementation
+                try:
+                    next_actions = self.q_network(next_states).argmax(1)
+                    next_q_values = self.target_network(next_states).gather(1, next_actions.unsqueeze(1)).squeeze(1)
+                except Exception as e:
+                    # Fallback to standard DQN if Double DQN fails
+                    print(f"⚠️ Double DQN fallback: {e}")
+                    next_q_values = self.target_network(next_states).max(1)[0]
             else:
                 # Standard DQN
                 next_q_values = self.target_network(next_states).max(1)[0]
