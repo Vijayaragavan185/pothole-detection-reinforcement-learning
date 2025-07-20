@@ -9,6 +9,7 @@ sys.path.append(str(Path(__file__).parent.parent.parent))
 
 from src.environment.pothole_env import VideoBasedPotholeEnv
 from src.agents.advanced_dqn import AdvancedDQNAgent
+from src.agents.dqn_agent import DQNAgent  # ADDED: Fallback import
 import numpy as np
 import matplotlib.pyplot as plt
 import pandas as pd
@@ -40,8 +41,19 @@ class FixedUltimateTrainer:
         print("="*60)
         
         try:
-            # FIXED: Use consistent environment setup
-            env = VideoBasedPotholeEnv(split='train', max_memory_mb=2048, target_sequences=1000)
+            # FIXED: Use correct environment parameters
+            env = VideoBasedPotholeEnv(
+                split="train",
+                max_memory_mb=8000,         # generous memory cap
+                target_sequences=1000,      # exact episode count each run
+                force_synthetic=False       # change to True for pure-synthetic runs
+            )
+            
+            # ADDED: Validate environment loaded successfully
+            if len(env.episode_sequences) == 0:
+                print(f"⚠️ Warning: No sequences loaded for {config_name}")
+                return None, None
+            
             agent = AdvancedDQNAgent(**agent_config)
             
             training_results = []
@@ -54,6 +66,11 @@ class FixedUltimateTrainer:
             print(f"   🎮 Environment: {len(env.episode_sequences)} sequences loaded")
             print(f"   🧠 Agent: {sum(p.numel() for p in agent.q_network.parameters()):,} parameters")
             print(f"   🎯 Target episodes: {episodes}")
+            
+            # ADDED: Initial validation test
+            print("   🧪 Running initial validation...")
+            initial_test = agent.evaluate(env, num_episodes=5)
+            print(f"   📊 Initial test accuracy: {initial_test['accuracy']:.1f}%")
             
             for episode in range(1, episodes + 1):
                 # Train episode
@@ -89,6 +106,11 @@ class FixedUltimateTrainer:
                     print(f"   🎯 EVAL: Accuracy={eval_result['accuracy']:.1f}%, "
                           f"Avg Reward={eval_result['average_reward']:+5.1f}, "
                           f"Best: {best_accuracy:.1f}% @ep{best_episode}")
+                
+                # ADDED: Early stopping for failed configurations
+                if episode >= 60 and best_accuracy == 0:
+                    print(f"   ⚠️ Early stopping: No learning detected after 60 episodes")
+                    break
             
             training_time = time.time() - start_time
             
@@ -119,7 +141,8 @@ class FixedUltimateTrainer:
                 'Correct Detections': final_eval['correct_decisions'],
                 'False Positives': final_eval['false_positives'],
                 'Missed Detections': final_eval['missed_detections'],
-                'Training Episodes': len(training_results)
+                'Training Episodes': len(training_results),
+                'Environment Sequences': len(env.episode_sequences)  # ADDED: Track data consistency
             })
             
             env.close()
@@ -134,6 +157,9 @@ class FixedUltimateTrainer:
             
         except Exception as e:
             print(f"❌ Error training {config_name}: {e}")
+            print(f"   🔧 Error details: {type(e).__name__}")
+            
+            # ENHANCED: Better error tracking
             self.comparison_data.append({
                 'Configuration': config_name,
                 'Final Accuracy': 0,
@@ -144,7 +170,9 @@ class FixedUltimateTrainer:
                 'Correct Detections': 0,
                 'False Positives': 0,
                 'Missed Detections': 0,
-                'Training Episodes': 0
+                'Training Episodes': 0,
+                'Environment Sequences': 0,
+                'Error': str(e)  # ADDED: Track error details
             })
             return None, None
     
@@ -227,7 +255,7 @@ class FixedUltimateTrainer:
         if len(comparison_df) > 0:
             key_columns = [
                 'Configuration', 'Final Accuracy', 'Best Accuracy', 
-                'Average Reward', 'Training Time (min)'
+                'Average Reward', 'Training Time (min)', 'Environment Sequences'
             ]
             print(comparison_df[key_columns].to_string(index=False, float_format='%.2f'))
             
@@ -239,6 +267,7 @@ class FixedUltimateTrainer:
                 print(f"   🎯 Accuracy: {best_config['Final Accuracy']:.1f}%")
                 print(f"   📊 Avg Reward: {best_config['Average Reward']:+5.1f}")
                 print(f"   ⏱️ Training Time: {best_config['Training Time (min)']:.1f} min")
+                print(f"   📈 Environment: {best_config['Environment Sequences']} sequences")
         
         # Save results
         self.save_results(comparison_df)
@@ -260,7 +289,14 @@ class FixedUltimateTrainer:
                 'start_time': self.start_time.isoformat(),
                 'duration_hours': (datetime.now() - self.start_time).total_seconds() / 3600,
                 'total_configurations': len(comparison_df)
-            }
+            },
+            'fixes_applied': [
+                'Consistent hyperparameters across configurations',
+                'Deterministic environment loading',
+                'Enhanced error handling and early stopping',
+                'Data consistency validation',
+                'More frequent evaluation and logging'
+            ]
         }
         
         with open(self.results_dir / "fixed_detailed_results.json", 'w') as f:

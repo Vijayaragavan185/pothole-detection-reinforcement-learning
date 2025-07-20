@@ -1,4 +1,4 @@
-Configuration,Final Accuracy,Best Accuracy,Average Reward,Training Time (min),Parameters,Correct Detections,False Positives,Missed Detections,Training Episodes,Efficiency Score,Safety Score
-STANDARD_DQN,100.0,100.0,10.0,1.364448642730713,3261093,50,0,0,150,42.29,100
-DUELING_DQN,100.0,100.0,10.0,1.5087546586990357,8315046,50,0,0,150,39.86,100
-ULTIMATE_DQN,100.0,100.0,10.0,1.0481337865193685,8315046,50,0,0,150,48.82,100
+Configuration,Final Accuracy,Best Accuracy,Average Reward,Training Time (min),Parameters,Correct Detections,False Positives,Missed Detections,Training Episodes,Environment Sequences,Error,Efficiency Score,Safety Score
+STANDARD_DQN,0,0,0,0,0,0,0,0,0,0,VideoBasedPotholeEnv.__init__() got an unexpected keyword argument 'deterministic_loading',0.0,100
+DUELING_DQN,0,0,0,0,0,0,0,0,0,0,VideoBasedPotholeEnv.__init__() got an unexpected keyword argument 'deterministic_loading',0.0,100
+ULTIMATE_DQN,0,0,0,0,0,0,0,0,0,0,VideoBasedPotholeEnv.__init__() got an unexpected keyword argument 'deterministic_loading',0.0,100
