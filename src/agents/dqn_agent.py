@@ -356,22 +356,69 @@ class DQNAgent:
             'final_info': info
         }
     
+    # def evaluate(self, env, num_episodes=20):
+    #     """FIXED: Complete episode evaluation with proper learning signals"""
+    #     self.q_network.eval()
+    #     total_rewards = []
+    #     correct_decisions = 0
+    #     false_positives = 0
+    #     missed_detections = 0
+        
+    #     for episode in range(num_episodes):
+    #         state, _ = env.reset()
+    #         episode_reward = 0
+    #         steps = 0
+    #         max_eval_steps = 100
+            
+    #         # ✅ COMPLETE EPISODE LOOP
+    #         while steps < max_eval_steps:
+    #             action = self.act(state, training=False)
+    #             next_state, reward, done, truncated, info = env.step(action)
+                
+    #             episode_reward += reward
+    #             state = next_state
+    #             steps += 1
+                
+    #             # Track performance based on actual rewards
+    #             if reward == 10:
+    #                 correct_decisions += 1
+    #             elif reward == -5:
+    #                 false_positives += 1
+    #             elif reward == -20:
+    #                 missed_detections += 1
+                
+    #             if done or truncated:
+    #                 break
+            
+    #         total_rewards.append(episode_reward)
+        
+    #     self.q_network.train()
+    #     total_decisions = correct_decisions + false_positives + missed_detections
+    #     accuracy = (correct_decisions / max(total_decisions, 1)) * 100
+        
+    #     return {
+    #         'average_reward': np.mean(total_rewards),
+    #         'accuracy': accuracy,
+    #         'correct_decisions': correct_decisions,
+    #         'false_positives': false_positives,
+    #         'missed_detections': missed_detections,
+    #         'total_episodes': num_episodes,
+    #         'total_decisions': total_decisions
+    #     }
+
     def evaluate(self, env, num_episodes=20):
-        """FIXED: Complete episode evaluation with proper learning signals"""
+        """Enhanced evaluation with balanced sampling"""
         self.q_network.eval()
-        total_rewards = []
-        correct_decisions = 0
-        false_positives = 0
-        missed_detections = 0
+        
+        pothole_results = []
+        non_pothole_results = []
         
         for episode in range(num_episodes):
-            state, _ = env.reset()
+            state, info = env.reset()
             episode_reward = 0
             steps = 0
-            max_eval_steps = 100
             
-            # ✅ COMPLETE EPISODE LOOP
-            while steps < max_eval_steps:
+            while steps < 100:  # Max steps per episode
                 action = self.act(state, training=False)
                 next_state, reward, done, truncated, info = env.step(action)
                 
@@ -379,33 +426,37 @@ class DQNAgent:
                 state = next_state
                 steps += 1
                 
-                # Track performance based on actual rewards
-                if reward == 10:
-                    correct_decisions += 1
-                elif reward == -5:
-                    false_positives += 1
-                elif reward == -20:
-                    missed_detections += 1
-                
                 if done or truncated:
                     break
             
-            total_rewards.append(episode_reward)
+            # Categorize by sequence type
+            metadata = info.get('metadata', {})
+            if 'non_pothole' in metadata.get('data_type', ''):
+                non_pothole_results.append({
+                    'reward': episode_reward,
+                    'correct': reward > 0
+                })
+            else:
+                pothole_results.append({
+                    'reward': episode_reward,
+                    'correct': reward > 0
+                })
+        
+        # Calculate balanced metrics
+        pothole_accuracy = np.mean([r['correct'] for r in pothole_results]) * 100 if pothole_results else 0
+        non_pothole_accuracy = np.mean([r['correct'] for r in non_pothole_results]) * 100 if non_pothole_results else 0
+        overall_accuracy = (pothole_accuracy + non_pothole_accuracy) / 2
         
         self.q_network.train()
-        total_decisions = correct_decisions + false_positives + missed_detections
-        accuracy = (correct_decisions / max(total_decisions, 1)) * 100
         
         return {
-            'average_reward': np.mean(total_rewards),
-            'accuracy': accuracy,
-            'correct_decisions': correct_decisions,
-            'false_positives': false_positives,
-            'missed_detections': missed_detections,
-            'total_episodes': num_episodes,
-            'total_decisions': total_decisions
+            'overall_accuracy': overall_accuracy,
+            'pothole_accuracy': pothole_accuracy,
+            'non_pothole_accuracy': non_pothole_accuracy,
+            'pothole_episodes': len(pothole_results),
+            'non_pothole_episodes': len(non_pothole_results),
+            'average_reward': np.mean([r['reward'] for r in pothole_results + non_pothole_results])
         }
-
 
     
     def save_model(self, filepath):

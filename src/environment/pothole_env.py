@@ -9,25 +9,155 @@ import random
 import json
 import gc
 import psutil
+import cv2
 from collections import deque
+from scipy import ndimage
+
 sys.path.append(str(Path(__file__).parent.parent.parent))
 from configs.config import ENV_CONFIG, VIDEO_CONFIG, PATHS
+
+
+class SyntheticNonPotholeGenerator:
+    """Generate realistic non-pothole road sequences for balanced training"""
+    
+    def __init__(self, sequence_length=5, input_size=(224, 224)):
+        self.sequence_length = sequence_length
+        self.input_size = input_size
+        
+    def generate_smooth_road_sequence(self, seed=None):
+        """Generate a sequence of smooth road surfaces"""
+        if seed is not None:
+            np.random.seed(seed)
+            
+        # Create base asphalt texture
+        base_texture = self._create_asphalt_texture()
+        
+        # Create sequence with slight variations
+        sequence = []
+        for frame_idx in range(self.sequence_length):
+            frame = base_texture.copy()
+            
+            # Add temporal variation (slight camera movement)
+            frame = self._add_camera_movement(frame, frame_idx)
+            
+            # Add road features
+            frame = self._add_road_markings(frame, probability=0.3)
+            frame = self._add_lighting_variation(frame, frame_idx)
+            frame = self._add_subtle_texture_variation(frame)
+            
+            # Ensure proper normalization
+            frame = np.clip(frame, 0.0, 1.0).astype(np.float32)
+            sequence.append(frame)
+            
+        return np.stack(sequence, axis=0)
+    
+    def _create_asphalt_texture(self):
+        """Create realistic asphalt road texture"""
+        # Base gray asphalt color
+        base_color = np.random.uniform(0.15, 0.35)  # Dark gray
+        frame = np.full((*self.input_size, 3), base_color, dtype=np.float32)
+        
+        # Add noise for asphalt texture
+        noise = np.random.normal(0, 0.05, (*self.input_size, 3))
+        frame += noise
+        
+        # Add some larger texture variations
+        for _ in range(random.randint(5, 15)):
+            x = random.randint(0, self.input_size[0] - 1)
+            y = random.randint(0, self.input_size[1] - 1)
+            size = random.randint(3, 8)
+            intensity = random.uniform(-0.1, 0.1)
+            
+            frame[max(0, x-size):min(self.input_size[0], x+size),
+                  max(0, y-size):min(self.input_size[1], y+size)] += intensity
+        
+        return frame
+    
+    def _add_road_markings(self, frame, probability=0.3):
+        """Add road markings (lane lines, etc.)"""
+        if random.random() < probability:
+            # Add lane marking
+            if random.random() < 0.5:  # Vertical lane line
+                line_x = random.randint(self.input_size[0] // 4, 3 * self.input_size[0] // 4)
+                line_width = random.randint(2, 6)
+                line_color = random.uniform(0.7, 0.9)  # White/yellow
+                
+                frame[line_x:line_x+line_width, :] = line_color
+                
+            else:  # Horizontal road marking
+                line_y = random.randint(self.input_size[1] // 4, 3 * self.input_size[1] // 4)
+                line_height = random.randint(2, 4)
+                line_color = random.uniform(0.7, 0.9)
+                
+                frame[:, line_y:line_y+line_height] = line_color
+        
+        return frame
+    
+    def _add_lighting_variation(self, frame, frame_idx):
+        """Add realistic lighting variations"""
+        # Simulate slight lighting changes over time
+        brightness_factor = 1.0 + 0.1 * np.sin(frame_idx * 0.5) * random.uniform(0.5, 1.0)
+        frame *= brightness_factor
+        
+        # Add shadow effects
+        if random.random() < 0.2:
+            shadow_intensity = random.uniform(0.8, 0.95)
+            shadow_area = random.randint(20, 60)
+            
+            x_start = random.randint(0, self.input_size[0] - shadow_area)
+            y_start = random.randint(0, self.input_size[1] - shadow_area)
+            
+            frame[x_start:x_start+shadow_area, y_start:y_start+shadow_area] *= shadow_intensity
+        
+        return frame
+    
+    def _add_camera_movement(self, frame, frame_idx):
+        """Simulate slight camera movement"""
+        # Small translation to simulate vehicle movement
+        dx = int(2 * np.sin(frame_idx * 0.3))
+        dy = int(1 * np.cos(frame_idx * 0.2))
+        
+        # Apply translation
+        if dx != 0 or dy != 0:
+            M = np.float32([[1, 0, dx], [0, 1, dy]])
+            frame = cv2.warpAffine(frame, M, self.input_size)
+        
+        return frame
+    
+    def _add_subtle_texture_variation(self, frame):
+        """Add subtle surface texture variations"""
+        # Add very small bumps and variations (NOT potholes)
+        for _ in range(random.randint(0, 3)):
+            x = random.randint(10, self.input_size[0] - 10)
+            y = random.randint(10, self.input_size[1] - 10)
+            size = random.randint(2, 5)  # Very small
+            intensity = random.uniform(-0.02, 0.02)  # Very subtle
+            
+            frame[x-size:x+size, y-size:y+size] += intensity
+        
+        return frame
+    
+    def generate_ground_truth_mask(self):
+        """Generate ground truth mask for non-pothole sequence"""
+        # Non-pothole sequences have zero ground truth (no potholes)
+        return np.zeros((self.sequence_length, self.input_size[1], self.input_size[0]), dtype=np.float32)
+
 
 class VideoBasedPotholeEnv(gym.Env):
     """
     🚀 REVOLUTIONARY RL ENVIRONMENT FOR POTHOLE DETECTION! 🚀
     
-    Fixed version with consistent data loading, proper tensor handling, and enhanced memory management.
+    Enhanced version with balanced pothole/non-pothole data generation for comprehensive training.
     """
     
     metadata = {'render_modes': ['human', 'rgb_array'], 'render_fps': 4}
     
     def __init__(self, split='train', render_mode=None, max_memory_mb=4096, target_sequences=None, 
-                 lazy=False, verbose=False):  # FIXED: Added missing parameters
+                 lazy=False, verbose=False, balanced=False):  # Added balanced parameter
         super().__init__()
         
         if verbose:
-            print("🎯 Initializing FIXED Video-Based RL Environment...")
+            print("🎯 Initializing ENHANCED Video-Based RL Environment...")
         
         # Environment configuration
         self.split = split
@@ -37,10 +167,16 @@ class VideoBasedPotholeEnv(gym.Env):
         self.max_memory_mb = max_memory_mb
         self.lazy = lazy
         self.verbose = verbose
+        self.balanced = balanced  # NEW: Enable balanced training
+        
+        # Initialize synthetic generator
+        self.synthetic_generator = SyntheticNonPotholeGenerator(
+            sequence_length=self.sequence_length,
+            input_size=self.input_size
+        )
         
         # FIXED: Dynamic target sequences based on memory
         if target_sequences is None:
-            # Scale target based on available memory
             if max_memory_mb >= 8192:  # 8GB+
                 self.target_sequences = 5000
             elif max_memory_mb >= 4096:  # 4GB+
@@ -81,16 +217,20 @@ class VideoBasedPotholeEnv(gym.Env):
         self.successful_loads = 0
         self.failed_loads = 0
         
-        # Load dataset
-        self._load_dataset_optimized()
+        # Load dataset based on balanced flag
+        if self.balanced:
+            self._load_dataset_balanced()
+        else:
+            self._load_dataset_optimized()
         
         if verbose:
-            print(f"✅ FIXED RL Environment Initialized!")
+            print(f"✅ ENHANCED RL Environment Initialized!")
             print(f"   📊 Action Space: {self.action_space.n} confidence thresholds")
             print(f"   🖼️ Observation Space: {self.observation_space.shape}")
             print(f"   💾 Dataset Split: {self.split}")
             print(f"   🎯 Available Episodes: {len(self.episode_sequences):,}")
             print(f"   📈 Target Sequences: {self.target_sequences}")
+            print(f"   ⚖️ Balanced Mode: {self.balanced}")
     
     def _get_memory_usage_mb(self):
         """Get current memory usage in MB"""
@@ -120,7 +260,7 @@ class VideoBasedPotholeEnv(gym.Env):
             PATHS["processed_frames"] / self.split
         ]
         
-        ground_truth_dir = PATHS["ground_truth_masks"] / self.split
+        ground_truth_dir = PATHS["ground_truth"] / self.split
         
         for data_dir in data_sources:
             if data_dir.exists() and len(self.episode_sequences) < self.target_sequences:
@@ -144,11 +284,157 @@ class VideoBasedPotholeEnv(gym.Env):
             print(f"   📈 Success rate: {self.successful_loads}/{self.successful_loads + self.failed_loads} "
                   f"({self.successful_loads/(self.successful_loads + self.failed_loads)*100:.1f}%)")
     
-    def _load_from_directory(self, data_dir, gt_dir):
-        """Load sequences from a specific directory"""
+    def _load_dataset_balanced(self):
+        """ENHANCED: Load dataset with balanced pothole/non-pothole distribution"""
+        if self.verbose:
+            print(f"📊 Loading BALANCED {self.split} dataset...")
+            print(f"   🎯 Target sequences: {self.target_sequences}")
+            print(f"   ⚖️ Creating 50% pothole, 50% non-pothole distribution")
+        
+        self.episode_sequences = []
+        self.episode_ground_truths = []
+        self.episode_metadata = []
+        self.successful_loads = 0
+        self.failed_loads = 0
+        
+        # Calculate balanced distribution
+        pothole_target = self.target_sequences // 2
+        non_pothole_target = self.target_sequences - pothole_target
+        
+        # Load real pothole data first
+        data_sources = [
+            PATHS["processed_frames"] / f"{self.split}_optimized",
+            PATHS["processed_frames"] / f"{self.split}_augmented", 
+            PATHS["processed_frames"] / self.split
+        ]
+        
+        ground_truth_dir = PATHS["ground_truth"] / self.split
+        
+        for data_dir in data_sources:
+            if data_dir.exists() and len(self.episode_sequences) < pothole_target:
+                if self.verbose:
+                    print(f"   📁 Loading potholes from: {data_dir.name}")
+                self._load_from_directory_limited(data_dir, ground_truth_dir, pothole_target)
+        
+        # Fill remaining pothole quota with synthetic pothole data
+        current_pothole_count = len(self.episode_sequences)
+        if current_pothole_count < pothole_target:
+            synthetic_pothole_needed = pothole_target - current_pothole_count
+            if self.verbose:
+                print(f"   🔧 Creating {synthetic_pothole_needed} synthetic pothole sequences")
+            self._create_synthetic_data(synthetic_pothole_needed)
+        
+        # Create synthetic non-pothole data
+        if self.verbose:
+            print(f"   🛣️ Creating {non_pothole_target} synthetic non-pothole sequences")
+        self._create_balanced_synthetic_data(non_pothole_target)
+        
+        # Shuffle for balanced training
+        combined_data = list(zip(self.episode_sequences, self.episode_ground_truths, self.episode_metadata))
+        random.shuffle(combined_data)
+        self.episode_sequences, self.episode_ground_truths, self.episode_metadata = zip(*combined_data)
+        self.episode_sequences = list(self.episode_sequences)
+        self.episode_ground_truths = list(self.episode_ground_truths)
+        self.episode_metadata = list(self.episode_metadata)
+        
+        if self.verbose:
+            pothole_count = sum(1 for meta in self.episode_metadata if 'non_pothole' not in meta.get('data_type', ''))
+            non_pothole_count = sum(1 for meta in self.episode_metadata if 'non_pothole' in meta.get('data_type', ''))
+            print(f"🚀 BALANCED Dataset loaded: {len(self.episode_sequences):,} sequences")
+            print(f"   ✅ Potholes: {pothole_count}")
+            print(f"   🛣️ Non-potholes: {non_pothole_count}")
+            print(f"   ⚖️ Balance ratio: {pothole_count/len(self.episode_sequences)*100:.1f}% / {non_pothole_count/len(self.episode_sequences)*100:.1f}%")
+    
+    def _load_from_directory_limited(self, data_dir, gt_dir, max_sequences):
+        """Load sequences from directory with maximum limit"""
         video_dirs = sorted([d for d in data_dir.iterdir() if d.is_dir()])
         
-        # ENHANCED: Load more sequences per video to reach 22k target
+        for i, video_dir in enumerate(video_dirs):
+            if len(self.episode_sequences) >= max_sequences:
+                break
+                
+            sequences_dir = video_dir / "sequences"
+            if not sequences_dir.exists():
+                continue
+            
+            seq_files = sorted(sequences_dir.glob("*.npy"))
+            
+            for seq_file in seq_files:
+                if len(self.episode_sequences) >= max_sequences:
+                    break
+                
+                try:
+                    sequence = self._safe_load_sequence_enhanced(seq_file)
+                    if sequence is None:
+                        self.failed_loads += 1
+                        continue
+                    
+                    # Load ground truth with existing logic
+                    video_name = video_dir.name.split('_aug')[0].split('_opt')[0]
+                    seq_idx = seq_file.stem.split('_')[-1]
+                    
+                    # Try multiple ground truth path patterns
+                    ground_truth = None
+                    if gt_dir.exists():
+                        if 'video_' in video_name:
+                            video_number = video_name.replace('video_', '')
+                            try:
+                                gt_directory_name = f"{int(video_number):04d}"
+                            except ValueError:
+                                gt_directory_name = video_name
+                        else:
+                            gt_directory_name = video_name
+                        
+                        gt_search_paths = [
+                            gt_dir / gt_directory_name / "sequences" / f"mask_sequence_{seq_idx}.npy",
+                            gt_dir / video_name / "sequences" / f"mask_sequence_{seq_idx}.npy",
+                        ]
+                        
+                        for gt_path in gt_search_paths:
+                            if gt_path.exists():
+                                ground_truth = self._safe_load_ground_truth_enhanced(gt_path)
+                                if ground_truth is not None:
+                                    break
+                    
+                    # Add to dataset
+                    self.episode_sequences.append(sequence)
+                    self.episode_ground_truths.append(ground_truth)
+                    self.episode_metadata.append({
+                        "video_name": video_name,
+                        "sequence_idx": seq_idx,
+                        "data_type": "real",
+                        "has_ground_truth": ground_truth is not None,
+                        "source_dir": data_dir.name
+                    })
+                    
+                    self.successful_loads += 1
+                    
+                except Exception as e:
+                    self.failed_loads += 1
+                    continue
+    
+    def _create_balanced_synthetic_data(self, count):
+        """Create synthetic non-pothole sequences for balanced training"""
+        for i in range(count):
+            # Generate non-pothole sequence
+            sequence = self.synthetic_generator.generate_smooth_road_sequence(seed=i + 5000)
+            ground_truth = self.synthetic_generator.generate_ground_truth_mask()
+            
+            self.episode_sequences.append(sequence)
+            self.episode_ground_truths.append(ground_truth)
+            self.episode_metadata.append({
+                "video_name": f"synthetic_non_pothole_{i:05d}",
+                "sequence_idx": "000",
+                "data_type": "synthetic_non_pothole",
+                "has_ground_truth": True,
+                "source_dir": "synthetic"
+            })
+    
+    def _load_from_directory(self, data_dir, gt_dir):
+        """Load sequences from a specific directory with FIXED ground truth loading"""
+        video_dirs = sorted([d for d in data_dir.iterdir() if d.is_dir()])
+        
+        # ENHANCED: Load more sequences per video to reach target
         sequences_per_video = max(50, self.target_sequences // len(video_dirs)) if video_dirs else 50
         
         for i, video_dir in enumerate(video_dirs):
@@ -171,21 +457,47 @@ class VideoBasedPotholeEnv(gym.Env):
                     break
                 
                 try:
-                    # ENHANCED: More permissive loading for 22k sequences
+                    # ENHANCED: More permissive loading for target sequences
                     sequence = self._safe_load_sequence_enhanced(seq_file)
                     if sequence is None:
                         self.failed_loads += 1
                         continue
                     
-                    # Load ground truth
-                    video_name = video_dir.name.split('_aug')[0]
+                    # ✅ FIXED: Ground truth path resolution with naming convention handling
+                    video_name = video_dir.name.split('_aug')[0].split('_opt')[0]  # Remove suffixes
                     seq_idx = seq_file.stem.split('_')[-1]
                     
-                    if gt_dir.exists():
-                        gt_file = gt_dir / video_name / "sequences" / f"mask_sequence_{seq_idx}.npy"
-                        ground_truth = self._safe_load_ground_truth_enhanced(gt_file)
+                    # Extract just the numeric part and format it for ground truth lookup
+                    if 'video_' in video_name:
+                        video_number = video_name.replace('video_', '')
+                        try:
+                            gt_directory_name = f"{int(video_number):04d}"  # Convert to 4-digit format
+                        except ValueError:
+                            gt_directory_name = video_name  # Fallback to original name
                     else:
-                        ground_truth = None
+                        gt_directory_name = video_name
+                    
+                    # Load ground truth with multiple fallback patterns
+                    ground_truth = None
+                    if gt_dir.exists():
+                        # Try multiple ground truth path patterns
+                        gt_search_paths = [
+                            gt_dir / gt_directory_name / "sequences" / f"mask_sequence_{seq_idx}.npy",
+                            gt_dir / video_name / "sequences" / f"mask_sequence_{seq_idx}.npy",
+                            gt_dir / f"{video_name.zfill(4)}" / "sequences" / f"mask_sequence_{seq_idx}.npy",
+                            gt_dir / video_name.replace('video_', '') / "sequences" / f"mask_sequence_{seq_idx}.npy"
+                        ]
+                        
+                        for gt_path in gt_search_paths:
+                            if gt_path.exists():
+                                ground_truth = self._safe_load_ground_truth_enhanced(gt_path)
+                                if ground_truth is not None:
+                                    if self.verbose and len(self.episode_sequences) % 100 == 0:
+                                        print(f"   ✅ Found ground truth: {gt_path.relative_to(gt_dir)}")
+                                    break
+                        
+                        if ground_truth is None and self.verbose and len(self.episode_sequences) % 500 == 0:
+                            print(f"   ⚠️ No ground truth found for {video_name} -> {gt_directory_name}, seq {seq_idx}")
                     
                     # Add to dataset
                     self.episode_sequences.append(sequence)
@@ -195,7 +507,8 @@ class VideoBasedPotholeEnv(gym.Env):
                         "sequence_idx": seq_idx,
                         "data_type": "real",
                         "has_ground_truth": ground_truth is not None,
-                        "source_dir": data_dir.name
+                        "source_dir": data_dir.name,
+                        "gt_directory_name": gt_directory_name  # Track the mapped name for debugging
                     })
                     
                     self.successful_loads += 1
@@ -254,7 +567,6 @@ class VideoBasedPotholeEnv(gym.Env):
             expected_shape = (self.sequence_length, self.input_size[1], self.input_size[0], 3)
             if sequence.shape != expected_shape:
                 try:
-                    import cv2
                     resized_sequence = np.zeros(expected_shape, dtype=np.float32)
                     for i in range(self.sequence_length):
                         frame = sequence[i]
@@ -269,10 +581,6 @@ class VideoBasedPotholeEnv(gym.Env):
 
             return sequence
 
-        except Exception as e:
-            return None
-
-            
         except Exception as e:
             return None
     
@@ -389,9 +697,12 @@ class VideoBasedPotholeEnv(gym.Env):
         self._last_confidence = detection_confidence
         agent_detects_pothole = detection_confidence > confidence_threshold
         reward = self._calculate_reward(agent_detects_pothole)
-        print(f"DEBUG - Action: {action}, Threshold: {confidence_threshold:.3f}, "
-          f"Confidence: {detection_confidence:.3f}, Decision: {agent_detects_pothole}, "
-          f"Ground Truth: {self._ground_truth_has_pothole()}, Reward: {reward}")
+        
+        # Only print debug info occasionally to reduce spam
+        if self.episode_count % 10 == 0:  # Print every 10th episode
+            print(f"DEBUG - Action: {action}, Threshold: {confidence_threshold:.3f}, "
+                  f"Confidence: {detection_confidence:.3f}, Decision: {agent_detects_pothole}, "
+                  f"Ground Truth: {self._ground_truth_has_pothole()}, Reward: {reward}")
         
         info = {
             "action": action,
@@ -410,12 +721,15 @@ class VideoBasedPotholeEnv(gym.Env):
         return next_observation, reward, True, False, info
     
     def _simulate_detection_confidence(self):
-        """FIXED: More realistic and learnable confidence simulation"""
+        """ENHANCED: More realistic confidence simulation for balanced data"""
         if self.current_ground_truth is not None:
             has_pothole = self._ground_truth_has_pothole()
             
+            # Check if this is a synthetic non-pothole sequence
+            is_synthetic_non_pothole = 'non_pothole' in self.current_metadata.get('data_type', '')
+            
             if has_pothole:
-                # ✅ REALISTIC: Higher base confidence for actual potholes
+                # Higher confidence for actual potholes
                 pothole_size = np.sum(self.current_ground_truth > 0)
                 total_pixels = self.current_ground_truth.size
                 size_ratio = pothole_size / total_pixels
@@ -427,9 +741,15 @@ class VideoBasedPotholeEnv(gym.Env):
                 noise = np.random.normal(0, 0.05)  # Reduced noise
                 confidence = np.clip(base_confidence + noise, 0.3, 0.95)
                 
+            elif is_synthetic_non_pothole:
+                # Very low confidence for synthetic non-pothole roads
+                base_confidence = np.random.uniform(0.05, 0.25)  # Even lower for synthetic
+                noise = np.random.normal(0, 0.02)
+                confidence = np.clip(base_confidence + noise, 0.0, 0.35)
+                
             else:
-                # ✅ REALISTIC: Lower confidence for non-potholes
-                base_confidence = np.random.uniform(0.05, 0.4)
+                # Low confidence for real non-potholes
+                base_confidence = np.random.uniform(0.15, 0.4)
                 noise = np.random.normal(0, 0.03)
                 confidence = np.clip(base_confidence + noise, 0.0, 0.45)
             
@@ -437,12 +757,12 @@ class VideoBasedPotholeEnv(gym.Env):
         else:
             # Fallback for synthetic data
             return np.random.uniform(0.2, 0.8)
-
     
     def _ground_truth_has_pothole(self):
         """Enhanced ground truth detection with debugging"""
         if self.current_ground_truth is None:
-            print("  GROUND TRUTH: None - no mask data")
+            if self.episode_count % 50 == 0:  # Reduce debug spam
+                print("  GROUND TRUTH: None - no mask data")
             return False
         
         pothole_pixels = np.sum(self.current_ground_truth > 0)
@@ -451,13 +771,12 @@ class VideoBasedPotholeEnv(gym.Env):
         
         has_pothole = pothole_ratio > 0.01  # 1% threshold
         
-        # Debug output
-        print(f"  GROUND TRUTH: {pothole_pixels}/{total_pixels} pixels = "
-            f"{pothole_ratio:.4f} ratio → {has_pothole}")
+        # Debug output (reduced frequency)
+        if self.episode_count % 10 == 0:
+            print(f"  GROUND TRUTH: {pothole_pixels}/{total_pixels} pixels = "
+                  f"{pothole_ratio:.4f} ratio → {has_pothole}")
         
         return has_pothole
-
-
     
     def _calculate_reward(self, agent_detects_pothole):
         """ENHANCED: Real ground truth first, synthetic fallback"""
@@ -466,8 +785,9 @@ class VideoBasedPotholeEnv(gym.Env):
             # ✅ USE REAL GROUND TRUTH (Primary path)
             ground_truth_has_pothole = self._ground_truth_has_pothole()
             
-            print(f"REWARD DEBUG: Agent Decision={agent_detects_pothole}, "
-                f"Ground Truth={ground_truth_has_pothole} (REAL)")
+            if self.episode_count % 10 == 0:  # Reduce debug spam
+                print(f"REWARD DEBUG: Agent Decision={agent_detects_pothole}, "
+                      f"Ground Truth={ground_truth_has_pothole} (REAL)")
             
             if ground_truth_has_pothole and agent_detects_pothole:
                 self.total_correct_detections += 1
@@ -483,13 +803,13 @@ class VideoBasedPotholeEnv(gym.Env):
                 return self.reward_missed  # -20
         
         else:
-            # ✅ SYNTHETIC FALLBACK (Your current implementation)
-            print("🔄 Using synthetic ground truth for learning")
+            # ✅ SYNTHETIC FALLBACK
+            if self.episode_count % 50 == 0:  # Reduce debug spam
+                print("🔄 Using synthetic ground truth for learning")
             
             # Store confidence for synthetic GT generation
             confidence_info = getattr(self, '_last_confidence', 0.5)
             
-            # Your existing synthetic logic (keep as-is)
             if confidence_info > 0.7:
                 synthetic_has_pothole = True
             elif confidence_info < 0.3:
@@ -505,11 +825,10 @@ class VideoBasedPotholeEnv(gym.Env):
                 return self.reward_false_positive
             else:
                 return self.reward_missed
-   
+    
     def close(self):
         """Clean up resources"""
         try:
-            import cv2
             cv2.destroyAllWindows()
         except:
             pass
@@ -550,6 +869,7 @@ class VideoBasedPotholeEnv(gym.Env):
         """Get detailed dataset information"""
         real_sequences = sum(1 for meta in self.episode_metadata if meta.get('data_type') == 'real')
         synthetic_sequences = len(self.episode_sequences) - real_sequences
+        non_pothole_sequences = sum(1 for meta in self.episode_metadata if 'non_pothole' in meta.get('data_type', ''))
         
         source_breakdown = {}
         for meta in self.episode_metadata:
@@ -560,37 +880,42 @@ class VideoBasedPotholeEnv(gym.Env):
             "total_sequences": len(self.episode_sequences),
             "real_sequences": real_sequences,
             "synthetic_sequences": synthetic_sequences,
+            "non_pothole_sequences": non_pothole_sequences,
+            "pothole_sequences": len(self.episode_sequences) - non_pothole_sequences,
             "successful_loads": self.successful_loads,
             "failed_loads": self.failed_loads,
             "target_sequences": self.target_sequences,
             "memory_limit_mb": self.max_memory_mb,
             "current_memory_mb": round(self._get_memory_usage_mb(), 2),
             "source_breakdown": source_breakdown,
-            "has_ground_truth": sum(1 for meta in self.episode_metadata if meta.get('has_ground_truth', False))
+            "has_ground_truth": sum(1 for meta in self.episode_metadata if meta.get('has_ground_truth', False)),
+            "balanced_mode": self.balanced
         }
+
 
 # Test function
 if __name__ == "__main__":
-    print("🚀 TESTING ENHANCED RL ENVIRONMENT!")
+    print("🚀 TESTING ENHANCED BALANCED RL ENVIRONMENT!")
     print("="*60)
     
     try:
-        # Test with enhanced parameters for 22k sequences
+        # Test balanced environment
         env = VideoBasedPotholeEnv(
             split='train', 
-            max_memory_mb=8192,  # 4GB memory limit
-            target_sequences=5000,  # Higher target
+            max_memory_mb=4096,
+            target_sequences=1000,  # Smaller for testing
+            balanced=True,  # Enable balanced mode
             verbose=True
         )
         
         # Display dataset information
         dataset_info = env.get_dataset_info()
-        print("\n📊 Enhanced Dataset Information:")
+        print("\n📊 Balanced Dataset Information:")
         for key, value in dataset_info.items():
             print(f"   {key}: {value}")
         
         # Test environment functionality
-        print("\n🧪 Testing Environment Functions...")
+        print("\n🧪 Testing Balanced Environment Functions...")
         
         # Test reset
         observation, info = env.reset()
@@ -598,17 +923,26 @@ if __name__ == "__main__":
         print(f"   📊 Observation shape: {observation.shape}")
         print(f"   💾 Memory usage: {info.get('memory_usage_mb', 0):.1f} MB")
         
-        # Test all actions
-        print(f"\n🎯 Testing all {env.action_space.n} actions...")
-        total_reward = 0
+        # Test actions on different sequence types
+        pothole_rewards = []
+        non_pothole_rewards = []
         
-        for action in range(env.action_space.n):
+        for i in range(20):  # Test 20 episodes
             obs, info_reset = env.reset()
+            action = random.randint(0, 4)  # Random action
             obs, reward, done, truncated, info = env.step(action)
-            total_reward += reward
             
-            threshold = env.action_thresholds[action]
-            print(f"Action {action} (threshold={threshold}): Reward={reward:+3}, Shape={obs.shape}")
+            # Categorize by sequence type
+            if 'non_pothole' in info['metadata'].get('data_type', ''):
+                non_pothole_rewards.append(reward)
+            else:
+                pothole_rewards.append(reward)
+        
+        print(f"\n📈 Balanced Performance Test:")
+        print(f"   Pothole sequences tested: {len(pothole_rewards)}")
+        print(f"   Non-pothole sequences tested: {len(non_pothole_rewards)}")
+        print(f"   Pothole rewards: {set(pothole_rewards) if pothole_rewards else 'None'}")
+        print(f"   Non-pothole rewards: {set(non_pothole_rewards) if non_pothole_rewards else 'None'}")
         
         # Performance stats
         print(f"\n📈 Performance Statistics:")
@@ -617,8 +951,8 @@ if __name__ == "__main__":
             print(f"   {key}: {value}")
         
         env.close()
-        print(f"\n🎉 ENHANCED ENVIRONMENT TEST COMPLETED SUCCESSFULLY!")
-        print(f"🚀 Ready for 22K sequence training with shape consistency!")
+        print(f"\n🎉 BALANCED ENVIRONMENT TEST COMPLETED SUCCESSFULLY!")
+        print(f"🚀 Ready for balanced training with realistic accuracy metrics!")
         
     except Exception as e:
         print(f"❌ Test failed: {e}")

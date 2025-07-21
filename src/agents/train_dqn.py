@@ -8,7 +8,7 @@ import sys
 from pathlib import Path
 sys.path.append(str(Path(__file__).parent.parent.parent))
 
-from src.environment.pothole_env import VideoBasedPotholeEnv
+from environment.pothole_env2 import VideoBasedPotholeEnv
 from src.agents.dqn_agent import DQNAgent
 import numpy as np
 import matplotlib.pyplot as plt
@@ -26,7 +26,8 @@ def train_dqn_agent(episodes=500, save_interval=50, eval_interval=25):
     env = VideoBasedPotholeEnv(
         split='train', 
         max_memory_mb=8192,  # Increased memory allowance
-        target_sequences=5000,  # More sequences
+        target_sequences=5000,
+        balanced=True,  # More sequences
         lazy=False,  # Full loading
         verbose=True
     )
