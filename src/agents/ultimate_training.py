@@ -7,7 +7,7 @@ import sys
 from pathlib import Path
 sys.path.append(str(Path(__file__).parent.parent.parent))
 
-from environment.pothole_env2 import VideoBasedPotholeEnv
+from environment.pothole_env import VideoBasedPotholeEnv
 from src.agents.advanced_dqn import AdvancedDQNAgent
 from src.agents.dqn_agent import DQNAgent  # ADDED: Fallback import
 import numpy as np

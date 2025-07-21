@@ -1,4 +1,4 @@
-from environment.pothole_env2 import VideoBasedPotholeEnv
+from environment.pothole_env import VideoBasedPotholeEnv
 
 env = VideoBasedPotholeEnv(split='train', verbose=True)
 

@@ -577,19 +577,27 @@ class AdvancedDQNAgent:
             'final_info': info
         }
 
-    def evaluate(self, env, num_episodes=20):
-        """Enhanced evaluation with balanced sampling"""
+    def evaluate(self, env, num_episodes=50):
+        """COMPREHENSIVE: Enhanced evaluation with detailed metrics"""
         self.q_network.eval()
         
         pothole_results = []
         non_pothole_results = []
+        total_rewards = []
+        detailed_metrics = {
+            'true_positives': 0,
+            'true_negatives': 0, 
+            'false_positives': 0,
+            'false_negatives': 0
+        }
         
         for episode in range(num_episodes):
             state, info = env.reset()
             episode_reward = 0
             steps = 0
+            episode_decisions = []
             
-            while steps < 100:  # Max steps per episode
+            while steps < 200:  # Increased max steps
                 action = self.act(state, training=False)
                 next_state, reward, done, truncated, info = env.step(action)
                 
@@ -597,39 +605,113 @@ class AdvancedDQNAgent:
                 state = next_state
                 steps += 1
                 
+                # Track detailed decision outcomes
+                agent_decision = info.get('agent_decision', False)
+                ground_truth = info.get('ground_truth_has_pothole', False)
+                
+                # Update confusion matrix
+                if ground_truth and agent_decision:
+                    detailed_metrics['true_positives'] += 1
+                elif not ground_truth and not agent_decision:
+                    detailed_metrics['true_negatives'] += 1
+                elif not ground_truth and agent_decision:
+                    detailed_metrics['false_positives'] += 1
+                elif ground_truth and not agent_decision:
+                    detailed_metrics['false_negatives'] += 1
+                
+                episode_decisions.append({
+                    'action': action,
+                    'threshold': env.action_thresholds[action],
+                    'confidence': info.get('detection_confidence', 0),
+                    'agent_decision': agent_decision,
+                    'ground_truth': ground_truth,
+                    'reward': reward
+                })
+                
                 if done or truncated:
                     break
             
+            total_rewards.append(episode_reward)
+            
             # Categorize by sequence type
             metadata = info.get('metadata', {})
-            if 'non_pothole' in metadata.get('data_type', ''):
-                non_pothole_results.append({
-                    'reward': episode_reward,
-                    'correct': reward > 0
-                })
+            sequence_type = metadata.get('data_type', 'unknown')
+            
+            episode_result = {
+                'reward': episode_reward,
+                'steps': steps,
+                'decisions': episode_decisions,
+                'sequence_type': sequence_type,
+                'avg_confidence': np.mean([d['confidence'] for d in episode_decisions]),
+                'actions_used': [d['action'] for d in episode_decisions]
+            }
+            
+            if 'non_pothole' in sequence_type:
+                non_pothole_results.append(episode_result)
             else:
-                pothole_results.append({
-                    'reward': episode_reward,
-                    'correct': reward > 0
-                })
+                pothole_results.append(episode_result)
         
-        # Calculate balanced metrics
-        pothole_accuracy = np.mean([r['correct'] for r in pothole_results]) * 100 if pothole_results else 0
-        non_pothole_accuracy = np.mean([r['correct'] for r in non_pothole_results]) * 100 if non_pothole_results else 0
-        overall_accuracy = (pothole_accuracy + non_pothole_accuracy) / 2
+        # Calculate comprehensive metrics
+        total_decisions = sum(detailed_metrics.values())
+        
+        if total_decisions > 0:
+            accuracy = (detailed_metrics['true_positives'] + detailed_metrics['true_negatives']) / total_decisions * 100
+            precision = detailed_metrics['true_positives'] / max(1, detailed_metrics['true_positives'] + detailed_metrics['false_positives']) * 100
+            recall = detailed_metrics['true_positives'] / max(1, detailed_metrics['true_positives'] + detailed_metrics['false_negatives']) * 100
+            f1_score = 2 * (precision * recall) / max(1, precision + recall)
+        else:
+            accuracy = precision = recall = f1_score = 0
+        
+        # Calculate category-specific metrics
+        pothole_accuracy = np.mean([r['reward'] > 0 for r in pothole_results]) * 100 if pothole_results else 0
+        non_pothole_accuracy = np.mean([r['reward'] > 0 for r in non_pothole_results]) * 100 if non_pothole_results else 0
         
         self.q_network.train()
         
         return {
-            'overall_accuracy': overall_accuracy,
+            'overall_accuracy': accuracy,
+            'precision': precision,
+            'recall': recall,
+            'f1_score': f1_score,
             'pothole_accuracy': pothole_accuracy,
             'non_pothole_accuracy': non_pothole_accuracy,
             'pothole_episodes': len(pothole_results),
             'non_pothole_episodes': len(non_pothole_results),
-            'average_reward': np.mean([r['reward'] for r in pothole_results + non_pothole_results])
+            'average_reward': np.mean(total_rewards),
+            'confusion_matrix': detailed_metrics,
+            'threshold_analysis': self._analyze_threshold_usage(pothole_results + non_pothole_results)
         }
 
-
+    def _analyze_threshold_usage(self, results):
+        """Analyze which confidence thresholds are used most effectively"""
+        threshold_stats = {}
+        
+        for result in results:
+            for decision in result['decisions']:
+                action = decision['action']
+                threshold = decision['threshold']
+                reward = decision['reward']
+                
+                if action not in threshold_stats:
+                    threshold_stats[action] = {
+                        'threshold': threshold,
+                        'usage_count': 0,
+                        'success_count': 0,
+                        'total_reward': 0
+                    }
+                
+                threshold_stats[action]['usage_count'] += 1
+                threshold_stats[action]['total_reward'] += reward
+                if reward > 0:
+                    threshold_stats[action]['success_count'] += 1
+        
+        # Calculate success rates
+        for action in threshold_stats:
+            stats = threshold_stats[action]
+            stats['success_rate'] = stats['success_count'] / max(1, stats['usage_count']) * 100
+            stats['avg_reward'] = stats['total_reward'] / max(1, stats['usage_count'])
+        
+        return threshold_stats
     
     
     def save_model(self, filepath):

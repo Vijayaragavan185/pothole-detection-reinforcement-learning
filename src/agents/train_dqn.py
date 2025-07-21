@@ -8,7 +8,8 @@ import sys
 from pathlib import Path
 sys.path.append(str(Path(__file__).parent.parent.parent))
 
-from environment.pothole_env2 import VideoBasedPotholeEnv
+from src.environment.pothole_env import VideoBasedPotholeEnv
+
 from src.agents.dqn_agent import DQNAgent
 import numpy as np
 import matplotlib.pyplot as plt
@@ -75,23 +76,49 @@ def train_dqn_agent(episodes=500, save_interval=50, eval_interval=25):
                   f"Memory: {len(agent.memory):4d}")
         
         # Evaluate agent performance
+        # Evaluate agent performance with comprehensive metrics
+        # Evaluate agent performance with comprehensive metrics
         if episode % eval_interval == 0:
-            print(f"\n🧪 EVALUATION at Episode {episode}...")
-            eval_results = agent.evaluate(env, num_episodes=20)
+            print(f"\n🧪 COMPREHENSIVE EVALUATION at Episode {episode}...")
+            eval_results = agent.evaluate(env, num_episodes=50)
             
-            print(f"   📊 Average Reward: {eval_results['average_reward']:+5.1f}")
-            print(f"   🎯 Accuracy: {eval_results['accuracy']:.1f}%")
-            print(f"   ✅ Correct: {eval_results['correct_decisions']}")
-            print(f"   ❌ False Positives: {eval_results['false_positives']}")
-            print(f"   💀 Missed Detections: {eval_results['missed_detections']}")
+            # Display comprehensive metrics
+            if 'overall_accuracy' in eval_results:
+                print(f"   📊 Overall Accuracy: {eval_results['overall_accuracy']:.1f}%")
+                print(f"   🎯 Precision: {eval_results['precision']:.1f}%")
+                print(f"   📈 Recall: {eval_results['recall']:.1f}%")
+                print(f"   ⚖️ F1-Score: {eval_results['f1_score']:.1f}")
+                print(f"   🕳️ Pothole Accuracy: {eval_results['pothole_accuracy']:.1f}% ({eval_results['pothole_episodes']} episodes)")
+                print(f"   🛣️ Non-pothole Accuracy: {eval_results['non_pothole_accuracy']:.1f}% ({eval_results['non_pothole_episodes']} episodes)")
+                
+                # Confusion matrix display
+                cm = eval_results['confusion_matrix']
+                print(f"   📊 Confusion Matrix:")
+                print(f"      TP: {cm['true_positives']}, TN: {cm['true_negatives']}")
+                print(f"      FP: {cm['false_positives']}, FN: {cm['false_negatives']}")
+                
+                # Threshold analysis
+                print(f"   🎯 Threshold Analysis:")
+                for action, stats in eval_results['threshold_analysis'].items():
+                    print(f"      Action {action} (th={stats['threshold']:.1f}): "
+                        f"{stats['success_rate']:.1f}% success ({stats['usage_count']} uses)")
+            else:
+                # Fallback to basic metrics
+                print(f"   📊 Average Reward: {eval_results['average_reward']:+5.1f}")
+                print(f"   🎯 Accuracy: {eval_results['accuracy']:.1f}%")
+                print(f"   ✅ Correct: {eval_results['correct_decisions']}")
+                print(f"   ❌ False Positives: {eval_results['false_positives']}")
+                print(f"   💀 Missed Detections: {eval_results['missed_detections']}")
             
-            # Save best model
-            if eval_results['average_reward'] > best_reward:
-                best_reward = eval_results['average_reward']
+            # Enhanced model saving criteria
+            current_score = eval_results.get('f1_score', eval_results['average_reward'])
+            if current_score > best_reward:
+                best_reward = current_score
                 model_path = Path("results/models/best_dqn_agent.pth")
                 model_path.parent.mkdir(parents=True, exist_ok=True)
                 agent.save_model(model_path)
-                print(f"   🏆 NEW BEST MODEL! Saved to {model_path}")
+                print(f"   🏆 NEW BEST MODEL! F1-Score: {current_score:.2f}, Saved to {model_path}")
+
         
         # Save checkpoint
         if episode % save_interval == 0:

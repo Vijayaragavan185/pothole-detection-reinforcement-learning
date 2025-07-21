@@ -8,7 +8,7 @@ import sys
 from pathlib import Path
 sys.path.append(str(Path(__file__).parent.parent.parent))
 
-from environment.pothole_env2 import VideoBasedPotholeEnv
+from environment.pothole_env import VideoBasedPotholeEnv
 from src.agents.dqn_agent import DQNAgent  # Use proven Day 5 agent
 import numpy as np
 import matplotlib.pyplot as plt

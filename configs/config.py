@@ -131,10 +131,14 @@ DEBUG_CONFIG = {
     "validate_data_consistency": True,
     "track_performance_metrics": True
 }
+NON_POTHOLE_TYPES = [
+  "road_cracks","wet_reflection","shadow","construction_joint",
+  "tire_tracks","oil_spill","road_marking","discoloration","debris","texture_variation"
+]
 
 # Export key configurations
 __all__ = [
     'DATASET_CONFIG', 'VIDEO_CONFIG', 'ENV_CONFIG', 'MODEL_CONFIG',
     'TRAINING_CONFIG', 'DQN_CONFIGS', 'PATHS', 'PERFORMANCE_CONFIG',
-    'DEBUG_CONFIG', 'BASE_DQN'
+    'DEBUG_CONFIG', 'BASE_DQN', 'NON_POTHOLE_TYPES'
 ]
