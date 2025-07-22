@@ -133,7 +133,8 @@ def train_dqn_agent(episodes=500, save_interval=50, eval_interval=25):
     
     print(f"🎉 TRAINING COMPLETED!")
     print(f"   📊 Final Average Reward: {final_eval['average_reward']:+5.1f}")
-    print(f"   🎯 Final Accuracy: {final_eval['accuracy']:.1f}%")
+    print(f"   🎯 Final Accuracy: {final_eval['overall_accuracy']:.1f}%")
+
     print(f"   🧠 Total Training Steps: {agent.training_step:,}")
     print(f"   📈 Episodes Completed: {agent.episode_count:,}")
     

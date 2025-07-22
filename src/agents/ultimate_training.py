@@ -93,7 +93,6 @@ class UltimateTrainingPipeline:
                 'use_double_dqn': False,
                 'use_dueling': False,
                 'use_prioritized_replay': False,
-                'description': 'Standard DQN with temporal CNN+LSTM'
             },
             'Dueling_DQN': {
                 **base_config,
@@ -101,7 +100,6 @@ class UltimateTrainingPipeline:
                 'use_dueling': True,
                 'use_prioritized_replay': False,
                 'memory_size': 12000,
-                'description': 'DQN with Dueling Architecture'
             },
             'Ultimate_DQN': {
                 **base_config,
@@ -112,11 +110,19 @@ class UltimateTrainingPipeline:
                 'memory_size': 15000,
                 'batch_size': 32,
                 'target_update': 75,
-                'description': 'Ultimate: Double + Dueling + Prioritized Replay'
             }
         }
         
         return configurations
+    
+    def get_agent_description(self, agent_name, config):
+        """Get description for agent configuration"""
+        descriptions = {
+            'Standard_DQN': 'Standard DQN with temporal CNN+LSTM',
+            'Dueling_DQN': 'DQN with Dueling Architecture',
+            'Ultimate_DQN': 'Ultimate: Double + Dueling + Prioritized Replay'
+        }
+        return descriptions.get(agent_name, f'{agent_name} Configuration')
     
     def train_single_agent(self, agent_name, agent_config):
         """Train a single agent configuration with comprehensive tracking"""
@@ -133,7 +139,9 @@ class UltimateTrainingPipeline:
         
         # Create agent using your advanced implementation
         try:
-            agent = AdvancedDQNAgent(**agent_config)
+            agent_params = {k: v for k, v in agent_config.items()}
+            agent = AdvancedDQNAgent(**agent_params)
+            
         except Exception as e:
             print(f"❌ Error creating agent {agent_name}: {e}")
             env.close()
@@ -152,14 +160,14 @@ class UltimateTrainingPipeline:
         
         print(f"   🎮 Environment: {len(env.episode_sequences)} sequences")
         print(f"   🧠 Agent: {sum(p.numel() for p in agent.q_network.parameters()):,} parameters")
-        print(f"   📊 Architecture: {agent_config['description']}")
+        print(f"   📊 Architecture: {self.get_agent_description(agent_name, agent_config)}")
         
-        # Initial validation
+        # Initial validation using the existing evaluate method
         try:
             initial_eval = agent.evaluate(env, num_episodes=10)
             print(f"   🧪 Initial performance: {initial_eval['overall_accuracy']:.1f}% accuracy")
-        except:
-            print("   ⚠️ Initial evaluation failed, continuing...")
+        except Exception as e:
+            print(f"   ⚠️ Initial evaluation failed: {e}, continuing...")
         
         # Training loop
         for episode in range(1, self.episodes_per_agent + 1):
@@ -184,6 +192,7 @@ class UltimateTrainingPipeline:
                 if episode % 50 == 0:
                     print(f"\n   🧪 COMPREHENSIVE EVALUATION at Episode {episode}...")
                     
+                    # ✅ FIXED: Use the existing evaluate method from advanced_dqn.py
                     eval_results = agent.evaluate(env, num_episodes=50)
                     evaluation_history.append({
                         'episode': episode,
@@ -245,8 +254,13 @@ class UltimateTrainingPipeline:
         try:
             final_eval = agent.evaluate(env, num_episodes=100)
             
-            # Get advanced statistics from your implementation
-            advanced_stats = agent.get_advanced_stats()
+            # Get advanced statistics if available
+            advanced_stats = {}
+            if hasattr(agent, 'get_advanced_stats'):
+                try:
+                    advanced_stats = agent.get_advanced_stats()
+                except:
+                    advanced_stats = {'note': 'Advanced stats not available'}
             
             # Store comprehensive results
             agent_results = {
@@ -267,15 +281,15 @@ class UltimateTrainingPipeline:
             self.training_histories[agent_name] = {
                 'rewards': episode_rewards,
                 'accuracies': episode_accuracies,
-                'losses': agent.loss_history,
-                'epsilon': agent.epsilon_history,
+                'losses': agent.loss_history if hasattr(agent, 'loss_history') else [],
+                'epsilon': agent.epsilon_history if hasattr(agent, 'epsilon_history') else [],
                 'td_errors': agent.td_error_history if hasattr(agent, 'td_error_history') else []
             }
             
             # Add to comparison data
             self.comparison_data.append({
                 'Agent': agent_name.replace('_', ' '),
-                'Architecture': agent_config['description'],
+                'Architecture': self.get_agent_description(agent_name, agent_config),
                 'Final Accuracy (%)': final_eval['overall_accuracy'],
                 'Best Accuracy (%)': best_performance['accuracy'],
                 'Final F1-Score': final_eval['f1_score'],
@@ -289,9 +303,9 @@ class UltimateTrainingPipeline:
                 'Convergence Episode': agent_results['convergence_episode'],
                 'Memory Size': len(agent.memory),
                 'Final Epsilon': agent.epsilon,
-                'Double DQN': agent_config['use_double_dqn'],
-                'Dueling': agent_config['use_dueling'],
-                'Prioritized Replay': agent_config['use_prioritized_replay']
+                'Double DQN': agent_config.get('use_double_dqn', False),
+                'Dueling': agent_config.get('use_dueling', False),
+                'Prioritized Replay': agent_config.get('use_prioritized_replay', False)
             })
             
             print(f"✅ {agent_name} TRAINING COMPLETED!")
@@ -330,7 +344,7 @@ class UltimateTrainingPipeline:
         
         print(f"\n🎯 Configurations to train:")
         for i, (name, config) in enumerate(configurations.items(), 1):
-            print(f"   {i}. {name}: {config['description']}")
+            print(f"   {i}. {name}: {self.get_agent_description(name, config)}")
         
         # Train all configurations
         for agent_name, agent_config in configurations.items():
@@ -401,78 +415,87 @@ class UltimateTrainingPipeline:
         return df_comparison
     
     def create_ultimate_visualizations(self, df_comparison):
-        """Create comprehensive visualizations using your advanced plotting"""
+        """Create comprehensive visualizations"""
         if df_comparison.empty:
             return
         
         print("\n📈 Generating comprehensive visualizations...")
         
-        # 1. Performance Comparison Plot
-        fig, ((ax1, ax2), (ax3, ax4)) = plt.subplots(2, 2, figsize=(20, 15))
-        fig.suptitle('Ultimate DQN Performance Comparison', fontsize=16, fontweight='bold')
+        try:
+            # 1. Performance Comparison Plot
+            fig, ((ax1, ax2), (ax3, ax4)) = plt.subplots(2, 2, figsize=(20, 15))
+            fig.suptitle('Ultimate DQN Performance Comparison', fontsize=16, fontweight='bold')
+            
+            agents = df_comparison['Agent'].tolist()
+            colors = ['#2E86C1', '#E74C3C', '#F39C12', '#27AE60', '#8E44AD', '#17A2B8']
+            
+            # Ensure we have enough colors for all agents
+            if len(agents) > len(colors):
+                colors = colors * (len(agents) // len(colors) + 1)
+            colors = colors[:len(agents)]
+            
+            # Accuracy comparison
+            x = np.arange(len(agents))
+            width = 0.35
+            
+            ax1.bar(x - width/2, df_comparison['Final Accuracy (%)'], width, 
+                    label='Final Accuracy', color=colors[0], alpha=0.8)
+            ax1.bar(x + width/2, df_comparison['Best Accuracy (%)'], width, 
+                    label='Best Accuracy', color=colors[1] if len(colors) > 1 else colors[0], alpha=0.8)
+            
+            ax1.set_xlabel('DQN Variants')
+            ax1.set_ylabel('Accuracy (%)')
+            ax1.set_title('Accuracy Comparison')
+            ax1.set_xticks(x)
+            ax1.set_xticklabels(agents, rotation=45)
+            ax1.legend()
+            ax1.grid(True, alpha=0.3)
+            
+            # F1-Score comparison
+            color_idx = 2 if len(colors) > 2 else 0
+            ax2.bar(agents, df_comparison['Final F1-Score'], color=colors[color_idx], alpha=0.8)
+            ax2.set_xlabel('DQN Variants')
+            ax2.set_ylabel('F1-Score')
+            ax2.set_title('F1-Score Comparison')
+            ax2.tick_params(axis='x', rotation=45)
+            ax2.grid(True, alpha=0.3)
+            
+            # Training efficiency
+            scatter_colors = colors[:len(agents)]
+            ax3.scatter(df_comparison['Training Time (min)'], df_comparison['Final Accuracy (%)'], 
+                       s=df_comparison['Parameters']/10000, alpha=0.7, c=scatter_colors)
+            ax3.set_xlabel('Training Time (minutes)')
+            ax3.set_ylabel('Final Accuracy (%)')
+            ax3.set_title('Training Efficiency (bubble size = parameters)')
+            ax3.grid(True, alpha=0.3)
+            
+            for i, agent in enumerate(agents):
+                ax3.annotate(agent, 
+                            (df_comparison.iloc[i]['Training Time (min)'], 
+                             df_comparison.iloc[i]['Final Accuracy (%)']),
+                            xytext=(5, 5), textcoords='offset points')
+            
+            # Convergence analysis
+            color_idx = 3 if len(colors) > 3 else 0
+            ax4.bar(agents, df_comparison['Convergence Episode'], color=colors[color_idx], alpha=0.8)
+            ax4.set_xlabel('DQN Variants')
+            ax4.set_ylabel('Episodes to Converge')
+            ax4.set_title('Convergence Speed')
+            ax4.tick_params(axis='x', rotation=45)
+            ax4.grid(True, alpha=0.3)
+            
+            plt.tight_layout()
+            plot_path = self.plots_dir / "ultimate_comparison.png"
+            plt.savefig(plot_path, dpi=300, bbox_inches='tight')
+            print(f"   📊 Comparison plot saved: {plot_path}")
+            plt.close()
         
-        agents = df_comparison['Agent']
-        colors = ['#2E86AB', '#A23B72', '#F18F01', '#8E44AD', '#E74C3C'][:len(agents)]
-        
-        # Accuracy comparison
-        x = np.arange(len(agents))
-        width = 0.35
-        
-        ax1.bar(x - width/2, df_comparison['Final Accuracy (%)'], width, 
-                label='Final Accuracy', color=colors[0], alpha=0.8)
-        ax1.bar(x + width/2, df_comparison['Best Accuracy (%)'], width, 
-                label='Best Accuracy', color=colors[1], alpha=0.8)
-        
-        ax1.set_xlabel('DQN Variants')
-        ax1.set_ylabel('Accuracy (%)')
-        ax1.set_title('Accuracy Comparison')
-        ax1.set_xticks(x)
-        ax1.set_xticklabels(agents, rotation=45)
-        ax1.legend()
-        ax1.grid(True, alpha=0.3)
-        
-        # F1-Score comparison
-        ax2.bar(agents, df_comparison['Final F1-Score'], color=colors[2], alpha=0.8)
-        ax2.set_xlabel('DQN Variants')
-        ax2.set_ylabel('F1-Score')
-        ax2.set_title('F1-Score Comparison')
-        ax2.tick_params(axis='x', rotation=45)
-        ax2.grid(True, alpha=0.3)
-        
-        # Training efficiency
-        ax3.scatter(df_comparison['Training Time (min)'], df_comparison['Final Accuracy (%)'], 
-                   s=df_comparison['Parameters']/10000, alpha=0.7, c=colors[:len(agents)])
-        ax3.set_xlabel('Training Time (minutes)')
-        ax3.set_ylabel('Final Accuracy (%)')
-        ax3.set_title('Training Efficiency (bubble size = parameters)')
-        ax3.grid(True, alpha=0.3)
-        
-        for i, agent in enumerate(agents):
-            ax3.annotate(agent, 
-                        (df_comparison.iloc[i]['Training Time (min)'], 
-                         df_comparison.iloc[i]['Final Accuracy (%)']),
-                        xytext=(5, 5), textcoords='offset points')
-        
-        # Convergence analysis
-        ax4.bar(agents, df_comparison['Convergence Episode'], color=colors[3], alpha=0.8)
-        ax4.set_xlabel('DQN Variants')
-        ax4.set_ylabel('Episodes to Converge')
-        ax4.set_title('Convergence Speed')
-        ax4.tick_params(axis='x', rotation=45)
-        ax4.grid(True, alpha=0.3)
-        
-        plt.tight_layout()
-        plot_path = self.plots_dir / "ultimate_comparison.png"
-        plt.savefig(plot_path, dpi=300, bbox_inches='tight')
-        print(f"   📊 Comparison plot saved: {plot_path}")
-        plt.show()
+        except Exception as e:
+            print(f"   ⚠️ Error creating comparison plots: {e}")
         
         # 2. Training Progress Plots for each agent
         for agent_name, history in self.training_histories.items():
             if agent_name in self.results:
-                agent = self.results[agent_name]
-                
-                # Use your advanced plotting if agent object is available
                 try:
                     plot_path = self.plots_dir / f"{agent_name.lower()}_training_progress.png"
                     
@@ -481,16 +504,17 @@ class UltimateTrainingPipeline:
                     fig.suptitle(f'{agent_name} Training Progress', fontsize=14, fontweight='bold')
                     
                     # Rewards
-                    episodes = range(1, len(history['rewards']) + 1)
-                    ax1.plot(episodes, history['rewards'], alpha=0.7)
-                    if len(history['rewards']) > 50:
-                        window = 50
-                        moving_avg = np.convolve(history['rewards'], np.ones(window)/window, mode='valid')
-                        ax1.plot(range(window, len(history['rewards']) + 1), moving_avg, 'r-', linewidth=2)
-                    ax1.set_title('Episode Rewards')
-                    ax1.set_xlabel('Episode')
-                    ax1.set_ylabel('Reward')
-                    ax1.grid(True)
+                    if history['rewards']:
+                        episodes = range(1, len(history['rewards']) + 1)
+                        ax1.plot(episodes, history['rewards'], alpha=0.7)
+                        if len(history['rewards']) > 50:
+                            window = 50
+                            moving_avg = np.convolve(history['rewards'], np.ones(window)/window, mode='valid')
+                            ax1.plot(range(window, len(history['rewards']) + 1), moving_avg, 'r-', linewidth=2)
+                        ax1.set_title('Episode Rewards')
+                        ax1.set_xlabel('Episode')
+                        ax1.set_ylabel('Reward')
+                        ax1.grid(True)
                     
                     # Accuracy over time
                     if history['accuracies']:
@@ -564,13 +588,12 @@ class UltimateTrainingPipeline:
         
         json_path = self.results_dir / f"ultimate_detailed_results_{timestamp}.json"
         with open(json_path, 'w') as f:
-            json.dump(detailed_results, f, indent=2)
+            json.dump(detailed_results, f, indent=2, default=str)
         
         print(f"\n💾 ULTIMATE RESULTS SAVED:")
         print(f"   📊 Comparison CSV: {comparison_path}")
         print(f"   📝 Detailed JSON: {json_path}")
         print(f"   📈 Plots directory: {self.plots_dir}")
-
 
 def main():
     """Main training function"""
@@ -605,7 +628,6 @@ def main():
     print(f"🚀 Ready for production deployment analysis!")
     
     return trainer, results
-
 
 if __name__ == "__main__":
     ultimate_trainer, comparison_results = main()
