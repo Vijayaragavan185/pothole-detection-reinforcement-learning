@@ -613,6 +613,65 @@ class VideoBasedPotholeEnv(gym.Env):
             
         except Exception:
             return None
+    # Add this to your existing VideoBasedPotholeEnv class
+    def integrate_real_cnn(self, use_real_cnn=True, cnn_model_path=None):
+        """
+        🧠 INTEGRATE REAL CNN DETECTOR WITH RL ENVIRONMENT
+        This replaces simulated confidence with real CNN detection
+        """
+        print(f"🔄 Integrating {'REAL' if use_real_cnn else 'SIMULATED'} CNN detector...")
+        
+        try:
+            from src.detectors.real_cnn_detector import create_cnn_detector
+            
+            self.cnn_detector = create_cnn_detector(
+                use_real_cnn=use_real_cnn, 
+                model_path=cnn_model_path
+            )
+            self.use_real_cnn = True
+            
+            print("✅ CNN detector integrated successfully!")
+            
+        except Exception as e:
+            print(f"⚠️ Could not integrate CNN detector: {e}")
+            print("🔄 Falling back to original simulation")
+            self.use_real_cnn = False
+    
+    def _simulate_detection_confidence(self):
+        """ENHANCED: Use real CNN if available, fallback to simulation"""
+        
+        # If real CNN is available, use it
+        if hasattr(self, 'use_real_cnn') and self.use_real_cnn:
+            try:
+                confidence = self.cnn_detector.detect_pothole_confidence(self.current_sequence)
+                return confidence
+            except Exception as e:
+                print(f"⚠️ CNN detection failed: {e}, using fallback")
+        
+        # Original simulation method as fallback
+        if self.current_ground_truth is not None:
+            has_pothole = self._ground_truth_has_pothole()
+            is_synthetic_non_pothole = 'non_pothole' in self.current_metadata.get('data_type', '')
+            
+            if has_pothole:
+                pothole_size = np.sum(self.current_ground_truth > 0)
+                total_pixels = self.current_ground_truth.size
+                size_ratio = pothole_size / total_pixels
+                base_confidence = 0.6 + (0.3 * min(size_ratio * 50, 1.0))
+                noise = np.random.normal(0, 0.05)
+                confidence = np.clip(base_confidence + noise, 0.3, 0.95)
+            elif is_synthetic_non_pothole:
+                base_confidence = np.random.uniform(0.05, 0.25)
+                noise = np.random.normal(0, 0.02)
+                confidence = np.clip(base_confidence + noise, 0.0, 0.35)
+            else:
+                base_confidence = np.random.uniform(0.15, 0.4)
+                noise = np.random.normal(0, 0.03)
+                confidence = np.clip(base_confidence + noise, 0.0, 0.45)
+                
+            return confidence
+        else:
+            return np.random.uniform(0.2, 0.8)
     
     def _create_synthetic_data(self, count):
         """Create high-quality synthetic data for training"""
