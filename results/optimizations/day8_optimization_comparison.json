@@ -1,0 +1,35 @@
+{
+  "accuracy": {
+    "optimization_level": "accuracy",
+    "device": "cpu",
+    "total_time": 7.843276739120483,
+    "avg_inference_time_ms": 15.686553478240967,
+    "fps": 63.748866274998754,
+    "memory_usage_mb": 1981.23828125,
+    "mixed_precision": false,
+    "jit_compiled": false,
+    "iterations": 500
+  },
+  "balanced": {
+    "optimization_level": "balanced",
+    "device": "cpu",
+    "total_time": 6.527355194091797,
+    "avg_inference_time_ms": 13.054710388183594,
+    "fps": 76.6007035211708,
+    "memory_usage_mb": 2112.50390625,
+    "mixed_precision": false,
+    "jit_compiled": true,
+    "iterations": 500
+  },
+  "speed": {
+    "optimization_level": "speed",
+    "device": "cpu",
+    "total_time": 6.264060974121094,
+    "avg_inference_time_ms": 12.528121948242188,
+    "fps": 79.82042353445556,
+    "memory_usage_mb": 2170.4453125,
+    "mixed_precision": false,
+    "jit_compiled": true,
+    "iterations": 500
+  }
+}

@@ -1,0 +1,233 @@
+{
+  "generated_at": "2025-07-22T19:49:21.300620",
+  "monitoring_period": {
+    "start": "2025-07-22T19:48:52.146007",
+    "end": "2025-07-22T19:49:19.282690",
+    "duration_hours": 0.027777777777777776
+  },
+  "metrics_summary": {
+    "current_metrics": {
+      "timestamp": "2025-07-22 19:49:19.282690",
+      "fps": 34.28267550468445,
+      "latency_ms": 92.82678127288818,
+      "memory_usage_mb": 13616.93359375,
+      "gpu_usage_percent": 0.0,
+      "cpu_usage_percent": 0.8,
+      "active_requests": 9,
+      "total_detections": 959,
+      "error_rate": 0.03928268265724182
+    },
+    "statistics": {
+      "fps": {
+        "current": 34.28267550468445,
+        "average": 29.717301177978516,
+        "min": 25.241586446762085,
+        "max": 34.28267550468445
+      },
+      "latency": {
+        "current": 92.82678127288818,
+        "average": 72.17303848266602,
+        "min": 51.633174419403076,
+        "max": 92.82678127288818
+      },
+      "memory": {
+        "current": 13616.93359375,
+        "average": 13618.047265625,
+        "peak": 13643.0
+      }
+    },
+    "recent_alerts": [
+      {
+        "timestamp": "2025-07-22 19:48:52.146007",
+        "severity": "error",
+        "component": "resources",
+        "message": "High memory usage: 13635.9MB > 4096.0MB",
+        "metrics": {
+          "timestamp": "2025-07-22 19:48:52.146007",
+          "fps": 27.145991325378418,
+          "latency_ms": 71.45995378494263,
+          "memory_usage_mb": 13635.90625,
+          "gpu_usage_percent": 0.0,
+          "cpu_usage_percent": 10.9,
+          "active_requests": 2,
+          "total_detections": 932,
+          "error_rate": 0.03214600014686585
+        }
+      },
+      {
+        "timestamp": "2025-07-22 19:48:55.163332",
+        "severity": "error",
+        "component": "resources",
+        "message": "High memory usage: 13617.5MB > 4096.0MB",
+        "metrics": {
+          "timestamp": "2025-07-22 19:48:55.163332",
+          "fps": 30.163315296173096,
+          "latency_ms": 51.633174419403076,
+          "memory_usage_mb": 13617.52734375,
+          "gpu_usage_percent": 0.0,
+          "cpu_usage_percent": 3.2,
+          "active_requests": 5,
+          "total_detections": 935,
+          "error_rate": 0.035163323879241946
+        }
+      },
+      {
+        "timestamp": "2025-07-22 19:48:58.176688",
+        "severity": "error",
+        "component": "resources",
+        "message": "High memory usage: 13643.0MB > 4096.0MB",
+        "metrics": {
+          "timestamp": "2025-07-22 19:48:58.176688",
+          "fps": 33.17666959762573,
+          "latency_ms": 81.76671981811523,
+          "memory_usage_mb": 13643.0,
+          "gpu_usage_percent": 0.0,
+          "cpu_usage_percent": 8.8,
+          "active_requests": 8,
+          "total_detections": 938,
+          "error_rate": 0.03817667770385742
+        }
+      },
+      {
+        "timestamp": "2025-07-22 19:49:01.195949",
+        "severity": "error",
+        "component": "resources",
+        "message": "High memory usage: 13614.2MB > 4096.0MB",
+        "metrics": {
+          "timestamp": "2025-07-22 19:49:01.195949",
+          "fps": 26.195929288864136,
+          "latency_ms": 61.95931673049927,
+          "memory_usage_mb": 13614.20703125,
+          "gpu_usage_percent": 0.0,
+          "cpu_usage_percent": 2.0,
+          "active_requests": 1,
+          "total_detections": 941,
+          "error_rate": 0.02119594192504883
+        }
+      },
+      {
+        "timestamp": "2025-07-22 19:49:04.213390",
+        "severity": "error",
+        "component": "resources",
+        "message": "High memory usage: 13625.2MB > 4096.0MB",
+        "metrics": {
+          "timestamp": "2025-07-22 19:49:04.213390",
+          "fps": 29.21337103843689,
+          "latency_ms": 92.13374376296997,
+          "memory_usage_mb": 13625.23046875,
+          "gpu_usage_percent": 0.0,
+          "cpu_usage_percent": 8.4,
+          "active_requests": 4,
+          "total_detections": 944,
+          "error_rate": 0.024213380098342896
+        }
+      },
+      {
+        "timestamp": "2025-07-22 19:49:07.227605",
+        "severity": "error",
+        "component": "resources",
+        "message": "High memory usage: 13599.8MB > 4096.0MB",
+        "metrics": {
+          "timestamp": "2025-07-22 19:49:07.227605",
+          "fps": 32.227590560913086,
+          "latency_ms": 72.27593183517456,
+          "memory_usage_mb": 13599.75390625,
+          "gpu_usage_percent": 0.0,
+          "cpu_usage_percent": 2.9,
+          "active_requests": 7,
+          "total_detections": 947,
+          "error_rate": 0.02722759771347046
+        }
+      },
+      {
+        "timestamp": "2025-07-22 19:49:10.241601",
+        "severity": "error",
+        "component": "resources",
+        "message": "High memory usage: 13596.2MB > 4096.0MB",
+        "metrics": {
+          "timestamp": "2025-07-22 19:49:10.241601",
+          "fps": 25.241586446762085,
+          "latency_ms": 52.41589069366455,
+          "memory_usage_mb": 13596.15625,
+          "gpu_usage_percent": 0.0,
+          "cpu_usage_percent": 1.1,
+          "active_requests": 0,
+          "total_detections": 950,
+          "error_rate": 0.03024159407615662
+        }
+      },
+      {
+        "timestamp": "2025-07-22 19:49:13.256674",
+        "severity": "error",
+        "component": "resources",
+        "message": "High memory usage: 13604.9MB > 4096.0MB",
+        "metrics": {
+          "timestamp": "2025-07-22 19:49:13.256674",
+          "fps": 28.256661653518677,
+          "latency_ms": 82.56663799285889,
+          "memory_usage_mb": 13604.8984375,
+          "gpu_usage_percent": 0.0,
+          "cpu_usage_percent": 4.4,
+          "active_requests": 3,
+          "total_detections": 953,
+          "error_rate": 0.033256667852401736
+        }
+      },
+      {
+        "timestamp": "2025-07-22 19:49:16.269232",
+        "severity": "error",
+        "component": "resources",
+        "message": "High memory usage: 13626.9MB > 4096.0MB",
+        "metrics": {
+          "timestamp": "2025-07-22 19:49:16.269232",
+          "fps": 31.26922106742859,
+          "latency_ms": 62.6922345161438,
+          "memory_usage_mb": 13626.859375,
+          "gpu_usage_percent": 0.0,
+          "cpu_usage_percent": 5.9,
+          "active_requests": 6,
+          "total_detections": 956,
+          "error_rate": 0.036269227027893064
+        }
+      },
+      {
+        "timestamp": "2025-07-22 19:49:19.282690",
+        "severity": "error",
+        "component": "resources",
+        "message": "High memory usage: 13616.9MB > 4096.0MB",
+        "metrics": {
+          "timestamp": "2025-07-22 19:49:19.282690",
+          "fps": 34.28267550468445,
+          "latency_ms": 92.82678127288818,
+          "memory_usage_mb": 13616.93359375,
+          "gpu_usage_percent": 0.0,
+          "cpu_usage_percent": 0.8,
+          "active_requests": 9,
+          "total_detections": 959,
+          "error_rate": 0.03928268265724182
+        }
+      }
+    ],
+    "system_status": "degraded"
+  },
+  "alert_summary": {
+    "total_alerts": 10,
+    "by_severity": {
+      "critical": 0,
+      "error": 10,
+      "warning": 0,
+      "info": 0
+    },
+    "by_component": {
+      "resources": 10
+    }
+  },
+  "recommendations": [
+    {
+      "category": "resources",
+      "priority": "medium",
+      "issue": "High memory usage: 13618.0MB",
+      "recommendation": "Implement memory pooling or reduce batch size"
+    }
+  ]
+}
