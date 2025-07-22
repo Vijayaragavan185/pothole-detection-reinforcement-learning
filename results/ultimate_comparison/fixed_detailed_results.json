@@ -1,0 +1,65 @@
+{
+  "timestamp": "2025-07-20T13:11:27.671090",
+  "comparison_summary": [
+    {
+      "Configuration": "STANDARD_DQN",
+      "Final Accuracy": 0,
+      "Best Accuracy": 0,
+      "Average Reward": 0,
+      "Training Time (min)": 0,
+      "Parameters": 0,
+      "Correct Detections": 0,
+      "False Positives": 0,
+      "Missed Detections": 0,
+      "Training Episodes": 0,
+      "Environment Sequences": 0,
+      "Error": "VideoBasedPotholeEnv.__init__() got an unexpected keyword argument 'target_sequences'",
+      "Efficiency Score": 0.0,
+      "Safety Score": 100
+    },
+    {
+      "Configuration": "DUELING_DQN",
+      "Final Accuracy": 0,
+      "Best Accuracy": 0,
+      "Average Reward": 0,
+      "Training Time (min)": 0,
+      "Parameters": 0,
+      "Correct Detections": 0,
+      "False Positives": 0,
+      "Missed Detections": 0,
+      "Training Episodes": 0,
+      "Environment Sequences": 0,
+      "Error": "VideoBasedPotholeEnv.__init__() got an unexpected keyword argument 'target_sequences'",
+      "Efficiency Score": 0.0,
+      "Safety Score": 100
+    },
+    {
+      "Configuration": "ULTIMATE_DQN",
+      "Final Accuracy": 0,
+      "Best Accuracy": 0,
+      "Average Reward": 0,
+      "Training Time (min)": 0,
+      "Parameters": 0,
+      "Correct Detections": 0,
+      "False Positives": 0,
+      "Missed Detections": 0,
+      "Training Episodes": 0,
+      "Environment Sequences": 0,
+      "Error": "VideoBasedPotholeEnv.__init__() got an unexpected keyword argument 'target_sequences'",
+      "Efficiency Score": 0.0,
+      "Safety Score": 100
+    }
+  ],
+  "training_session": {
+    "start_time": "2025-07-20T13:11:27.649540",
+    "duration_hours": 6.549722222222222e-06,
+    "total_configurations": 3
+  },
+  "fixes_applied": [
+    "Consistent hyperparameters across configurations",
+    "Deterministic environment loading",
+    "Enhanced error handling and early stopping",
+    "Data consistency validation",
+    "More frequent evaluation and logging"
+  ]
+}

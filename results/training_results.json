@@ -1,0 +1,53 @@
+{
+  "timestamp": "2025-07-21T21:48:43.200216",
+  "episodes": 300,
+  "final_evaluation": {
+    "overall_accuracy": 100.0,
+    "precision": 100.0,
+    "recall": 100.0,
+    "f1_score": 100.0,
+    "pothole_accuracy": 100.0,
+    "non_pothole_accuracy": 100.0,
+    "pothole_episodes": 24,
+    "non_pothole_episodes": 26,
+    "average_reward": 10.0,
+    "confusion_matrix": {
+      "true_positives": 24,
+      "true_negatives": 26,
+      "false_positives": 0,
+      "false_negatives": 0
+    },
+    "threshold_analysis": {
+      "0": {
+        "threshold": 0.3,
+        "usage_count": 50,
+        "success_count": 50,
+        "total_reward": 500,
+        "success_rate": 100.0,
+        "avg_reward": 10.0
+      }
+    }
+  },
+  "best_reward": 100.0,
+  "total_training_steps": 269,
+  "hyperparameters": {
+    "learning_rate": 0.001,
+    "gamma": 0.99,
+    "epsilon_start": 1.0,
+    "epsilon_end": 0.05,
+    "epsilon_decay": 0.998,
+    "batch_size": 32,
+    "target_update": 100
+  },
+  "environment_info": {
+    "sequences_loaded": 5000,
+    "split": "train",
+    "action_thresholds": [
+      0.3,
+      0.5,
+      0.7,
+      0.8,
+      0.9
+    ]
+  }
+}

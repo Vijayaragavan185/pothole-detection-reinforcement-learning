@@ -1,0 +1,46 @@
+{
+  "pipeline_execution": {
+    "timestamp": "20250719_202938",
+    "duration_seconds": 76.17948031425476,
+    "success_rate": 100.0,
+    "total_sequences": 31416
+  },
+  "component_results": {
+    "mask_processing": {
+      "success": 372,
+      "failed": 0,
+      "sequences": 5580,
+      "skipped": true
+    },
+    "sequence_optimization": {
+      "stats": {
+        "train": 11160,
+        "val": 3720,
+        "test": 1656
+      },
+      "skipped": true
+    },
+    "data_augmentation": {
+      "train": 11160,
+      "val": 3720,
+      "skipped": true
+    },
+    "quality_enhancement": {
+      "enhanced": 0,
+      "skipped": true
+    },
+    "video_analysis": {
+      "completed": true,
+      "skipped": false
+    },
+    "success_rate": 0.0,
+    "duration": 0.0,
+    "total_sequences": 0
+  },
+  "final_statistics": {
+    "total_sequences": 31416,
+    "success_rate": 100.0,
+    "duration": 76.17948031425476,
+    "components_completed": 1
+  }
+}

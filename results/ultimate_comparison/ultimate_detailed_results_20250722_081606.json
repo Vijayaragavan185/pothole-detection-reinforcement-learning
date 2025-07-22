@@ -1,0 +1,442 @@
+{
+  "metadata": {
+    "timestamp": "20250722_081606",
+    "training_session_start": "2025-07-22T08:00:54.732379",
+    "total_duration_hours": 0.25322335333333335,
+    "episodes_per_agent": 300,
+    "balanced_training": true,
+    "target_sequences": 5000
+  },
+  "comparison_summary": [
+    {
+      "Agent": "Standard DQN",
+      "Architecture": "Standard DQN with temporal CNN+LSTM",
+      "Final Accuracy (%)": 100.0,
+      "Best Accuracy (%)": 100.0,
+      "Final F1-Score": 100.0,
+      "Best F1-Score": 100.0,
+      "Precision (%)": 100.0,
+      "Recall (%)": 100.0,
+      "Pothole Accuracy (%)": 100.0,
+      "Non-pothole Accuracy (%)": 100.0,
+      "Training Time (min)": 3.731546191374461,
+      "Parameters": 3261093,
+      "Convergence Episode": 6,
+      "Memory Size": 300,
+      "Final Epsilon": 0.8741234761790619,
+      "Double DQN": false,
+      "Dueling": false,
+      "Prioritized Replay": false
+    },
+    {
+      "Agent": "Dueling DQN",
+      "Architecture": "DQN with Dueling Architecture",
+      "Final Accuracy (%)": 100.0,
+      "Best Accuracy (%)": 100.0,
+      "Final F1-Score": 100.0,
+      "Best F1-Score": 100.0,
+      "Precision (%)": 100.0,
+      "Recall (%)": 100.0,
+      "Pothole Accuracy (%)": 100.0,
+      "Non-pothole Accuracy (%)": 100.0,
+      "Training Time (min)": 3.940818417072296,
+      "Parameters": 8315046,
+      "Convergence Episode": 6,
+      "Memory Size": 300,
+      "Final Epsilon": 0.8741234761790619,
+      "Double DQN": false,
+      "Dueling": true,
+      "Prioritized Replay": false
+    },
+    {
+      "Agent": "Ultimate DQN",
+      "Architecture": "Ultimate: Double + Dueling + Prioritized Replay",
+      "Final Accuracy (%)": 100.0,
+      "Best Accuracy (%)": 100.0,
+      "Final F1-Score": 100.0,
+      "Best F1-Score": 100.0,
+      "Precision (%)": 100.0,
+      "Recall (%)": 100.0,
+      "Pothole Accuracy (%)": 100.0,
+      "Non-pothole Accuracy (%)": 100.0,
+      "Training Time (min)": 4.483457493782043,
+      "Parameters": 8315046,
+      "Convergence Episode": 6,
+      "Memory Size": 300,
+      "Final Epsilon": 0.8741234761790619,
+      "Double DQN": true,
+      "Dueling": true,
+      "Prioritized Replay": true
+    }
+  ],
+  "detailed_results": {
+    "Standard_DQN": {
+      "config": {
+        "input_shape": [
+          5,
+          224,
+          224,
+          3
+        ],
+        "num_actions": 5,
+        "learning_rate": 0.0005,
+        "gamma": 0.99,
+        "epsilon_start": 1.0,
+        "epsilon_end": 0.01,
+        "epsilon_decay": 0.9995,
+        "memory_size": 10000,
+        "batch_size": 32,
+        "target_update": 100,
+        "use_double_dqn": false,
+        "use_dueling": false,
+        "use_prioritized_replay": false
+      },
+      "final_evaluation": {
+        "overall_accuracy": 100.0,
+        "precision": 100.0,
+        "recall": 100.0,
+        "f1_score": 100.0,
+        "pothole_accuracy": 100.0,
+        "non_pothole_accuracy": 100.0,
+        "pothole_episodes": 51,
+        "non_pothole_episodes": 49,
+        "average_reward": 10.0,
+        "confusion_matrix": {
+          "true_positives": 51,
+          "true_negatives": 49,
+          "false_positives": 0,
+          "false_negatives": 0
+        },
+        "threshold_analysis": {
+          "2": {
+            "threshold": 0.7,
+            "usage_count": 100,
+            "success_count": 100,
+            "total_reward": 1000,
+            "success_rate": 100.0,
+            "avg_reward": 10.0
+          }
+        }
+      },
+      "best_performance": {
+        "accuracy": 100.0,
+        "f1_score": 100.0,
+        "episode": 50,
+        "full_results": {
+          "overall_accuracy": 100.0,
+          "precision": 100.0,
+          "recall": 100.0,
+          "f1_score": 100.0,
+          "pothole_accuracy": 100.0,
+          "non_pothole_accuracy": 100.0,
+          "pothole_episodes": 26,
+          "non_pothole_episodes": 24,
+          "average_reward": 10.0,
+          "confusion_matrix": {
+            "true_positives": 26,
+            "true_negatives": 24,
+            "false_positives": 0,
+            "false_negatives": 0
+          },
+          "threshold_analysis": {
+            "2": {
+              "threshold": 0.7,
+              "usage_count": 50,
+              "success_count": 50,
+              "total_reward": 500,
+              "success_rate": 100.0,
+              "avg_reward": 10.0
+            }
+          }
+        }
+      },
+      "advanced_stats": {
+        "training_step": 269,
+        "episode_count": 300,
+        "epsilon": 0.8741234761790619,
+        "learning_rate": 0.0005,
+        "memory_size": 300,
+        "action_distribution": [
+          0.23380281690140844,
+          0.16901408450704225,
+          0.3619718309859155,
+          0.16619718309859155,
+          0.06901408450704226
+        ],
+        "reward_distribution": {
+          "correct": 0.0,
+          "false_positive": 0.0,
+          "missed": 0.0
+        },
+        "avg_td_error": 2.579814221858978,
+        "avg_loss": 29.884558477401733,
+        "configuration": {
+          "double_dqn": false,
+          "dueling": false,
+          "prioritized_replay": false
+        }
+      },
+      "training_summary": {
+        "total_episodes": 300,
+        "training_time_minutes": 3.731546191374461,
+        "convergence_episode": 6
+      }
+    },
+    "Dueling_DQN": {
+      "config": {
+        "input_shape": [
+          5,
+          224,
+          224,
+          3
+        ],
+        "num_actions": 5,
+        "learning_rate": 0.0005,
+        "gamma": 0.99,
+        "epsilon_start": 1.0,
+        "epsilon_end": 0.01,
+        "epsilon_decay": 0.9995,
+        "memory_size": 12000,
+        "batch_size": 32,
+        "target_update": 100,
+        "use_double_dqn": false,
+        "use_dueling": true,
+        "use_prioritized_replay": false
+      },
+      "final_evaluation": {
+        "overall_accuracy": 100.0,
+        "precision": 100.0,
+        "recall": 100.0,
+        "f1_score": 100.0,
+        "pothole_accuracy": 100.0,
+        "non_pothole_accuracy": 100.0,
+        "pothole_episodes": 53,
+        "non_pothole_episodes": 47,
+        "average_reward": 10.0,
+        "confusion_matrix": {
+          "true_positives": 53,
+          "true_negatives": 47,
+          "false_positives": 0,
+          "false_negatives": 0
+        },
+        "threshold_analysis": {
+          "1": {
+            "threshold": 0.5,
+            "usage_count": 86,
+            "success_count": 86,
+            "total_reward": 860,
+            "success_rate": 100.0,
+            "avg_reward": 10.0
+          },
+          "0": {
+            "threshold": 0.3,
+            "usage_count": 13,
+            "success_count": 13,
+            "total_reward": 130,
+            "success_rate": 100.0,
+            "avg_reward": 10.0
+          },
+          "2": {
+            "threshold": 0.7,
+            "usage_count": 1,
+            "success_count": 1,
+            "total_reward": 10,
+            "success_rate": 100.0,
+            "avg_reward": 10.0
+          }
+        }
+      },
+      "best_performance": {
+        "accuracy": 100.0,
+        "f1_score": 100.0,
+        "episode": 50,
+        "full_results": {
+          "overall_accuracy": 100.0,
+          "precision": 100.0,
+          "recall": 100.0,
+          "f1_score": 100.0,
+          "pothole_accuracy": 100.0,
+          "non_pothole_accuracy": 100.0,
+          "pothole_episodes": 27,
+          "non_pothole_episodes": 23,
+          "average_reward": 10.0,
+          "confusion_matrix": {
+            "true_positives": 27,
+            "true_negatives": 23,
+            "false_positives": 0,
+            "false_negatives": 0
+          },
+          "threshold_analysis": {
+            "0": {
+              "threshold": 0.3,
+              "usage_count": 50,
+              "success_count": 50,
+              "total_reward": 500,
+              "success_rate": 100.0,
+              "avg_reward": 10.0
+            }
+          }
+        }
+      },
+      "advanced_stats": {
+        "training_step": 269,
+        "episode_count": 300,
+        "epsilon": 0.8741234761790619,
+        "learning_rate": 0.0005,
+        "memory_size": 300,
+        "action_distribution": [
+          0.19577464788732393,
+          0.46901408450704224,
+          0.15774647887323945,
+          0.1028169014084507,
+          0.07464788732394366
+        ],
+        "reward_distribution": {
+          "correct": 0.0,
+          "false_positive": 0.0,
+          "missed": 0.0
+        },
+        "avg_td_error": 2.678956300616264,
+        "avg_loss": 34.35540626764298,
+        "configuration": {
+          "double_dqn": false,
+          "dueling": true,
+          "prioritized_replay": false
+        }
+      },
+      "training_summary": {
+        "total_episodes": 300,
+        "training_time_minutes": 3.940818417072296,
+        "convergence_episode": 6
+      }
+    },
+    "Ultimate_DQN": {
+      "config": {
+        "input_shape": [
+          5,
+          224,
+          224,
+          3
+        ],
+        "num_actions": 5,
+        "learning_rate": 0.0003,
+        "gamma": 0.99,
+        "epsilon_start": 1.0,
+        "epsilon_end": 0.01,
+        "epsilon_decay": 0.9995,
+        "memory_size": 15000,
+        "batch_size": 32,
+        "target_update": 75,
+        "use_double_dqn": true,
+        "use_dueling": true,
+        "use_prioritized_replay": true
+      },
+      "final_evaluation": {
+        "overall_accuracy": 100.0,
+        "precision": 100.0,
+        "recall": 100.0,
+        "f1_score": 100.0,
+        "pothole_accuracy": 100.0,
+        "non_pothole_accuracy": 100.0,
+        "pothole_episodes": 50,
+        "non_pothole_episodes": 50,
+        "average_reward": 10.0,
+        "confusion_matrix": {
+          "true_positives": 50,
+          "true_negatives": 50,
+          "false_positives": 0,
+          "false_negatives": 0
+        },
+        "threshold_analysis": {
+          "2": {
+            "threshold": 0.7,
+            "usage_count": 38,
+            "success_count": 38,
+            "total_reward": 380,
+            "success_rate": 100.0,
+            "avg_reward": 10.0
+          },
+          "0": {
+            "threshold": 0.3,
+            "usage_count": 12,
+            "success_count": 12,
+            "total_reward": 120,
+            "success_rate": 100.0,
+            "avg_reward": 10.0
+          },
+          "1": {
+            "threshold": 0.5,
+            "usage_count": 50,
+            "success_count": 50,
+            "total_reward": 500,
+            "success_rate": 100.0,
+            "avg_reward": 10.0
+          }
+        }
+      },
+      "best_performance": {
+        "accuracy": 100.0,
+        "f1_score": 100.0,
+        "episode": 50,
+        "full_results": {
+          "overall_accuracy": 100.0,
+          "precision": 100.0,
+          "recall": 100.0,
+          "f1_score": 100.0,
+          "pothole_accuracy": 100.0,
+          "non_pothole_accuracy": 100.0,
+          "pothole_episodes": 21,
+          "non_pothole_episodes": 29,
+          "average_reward": 10.0,
+          "confusion_matrix": {
+            "true_positives": 21,
+            "true_negatives": 29,
+            "false_positives": 0,
+            "false_negatives": 0
+          },
+          "threshold_analysis": {
+            "1": {
+              "threshold": 0.5,
+              "usage_count": 50,
+              "success_count": 50,
+              "total_reward": 500,
+              "success_rate": 100.0,
+              "avg_reward": 10.0
+            }
+          }
+        }
+      },
+      "advanced_stats": {
+        "training_step": 269,
+        "episode_count": 300,
+        "epsilon": 0.8741234761790619,
+        "learning_rate": 0.0003,
+        "memory_size": 300,
+        "action_distribution": [
+          0.11830985915492957,
+          0.34507042253521125,
+          0.26901408450704223,
+          0.18028169014084508,
+          0.08732394366197183
+        ],
+        "reward_distribution": {
+          "correct": 0.0,
+          "false_positive": 0.0,
+          "missed": 0.0
+        },
+        "avg_td_error": 6.681656723022461,
+        "avg_loss": 29.76363085746765,
+        "configuration": {
+          "double_dqn": true,
+          "dueling": true,
+          "prioritized_replay": true
+        }
+      },
+      "training_summary": {
+        "total_episodes": 300,
+        "training_time_minutes": 4.483457493782043,
+        "convergence_episode": 6
+      }
+    }
+  }
+}

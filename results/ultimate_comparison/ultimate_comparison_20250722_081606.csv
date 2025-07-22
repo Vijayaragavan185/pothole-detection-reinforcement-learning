@@ -1,0 +1,4 @@
+Agent,Architecture,Final Accuracy (%),Best Accuracy (%),Final F1-Score,Best F1-Score,Precision (%),Recall (%),Pothole Accuracy (%),Non-pothole Accuracy (%),Training Time (min),Parameters,Convergence Episode,Memory Size,Final Epsilon,Double DQN,Dueling,Prioritized Replay
+Standard DQN,Standard DQN with temporal CNN+LSTM,100.0,100.0,100.0,100.0,100.0,100.0,100.0,100.0,3.731546191374461,3261093,6,300,0.8741234761790619,False,False,False
+Dueling DQN,DQN with Dueling Architecture,100.0,100.0,100.0,100.0,100.0,100.0,100.0,100.0,3.940818417072296,8315046,6,300,0.8741234761790619,False,True,False
+Ultimate DQN,Ultimate: Double + Dueling + Prioritized Replay,100.0,100.0,100.0,100.0,100.0,100.0,100.0,100.0,4.483457493782043,8315046,6,300,0.8741234761790619,True,True,True
