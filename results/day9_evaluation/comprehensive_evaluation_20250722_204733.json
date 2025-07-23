@@ -1,0 +1,53 @@
+{
+  "timestamp": "2025-07-22T20:47:33.947833",
+  "basic_performance": {
+    "accuracy": 100.0,
+    "precision": 100.0,
+    "recall": 100.0,
+    "f1_score": 100.0,
+    "average_reward": 10.0,
+    "average_confidence": 0.6186800305164118,
+    "confusion_matrix": {
+      "true_negatives": 4,
+      "false_positives": 0,
+      "false_negatives": 0,
+      "true_positives": 8
+    }
+  },
+  "multiclass_performance": {
+    "note": "Multi-class evaluation not available for this agent"
+  },
+  "edge_case_performance": {
+    "edge_case_accuracies": {
+      "low_light": 100.0,
+      "motion_blur": 100.0,
+      "weather_effects": 100.0,
+      "surface_anomaly": 100.0
+    },
+    "average_edge_case_accuracy": 100.0,
+    "robustness_score": 100.0
+  },
+  "weather_performance": {
+    "weather_accuracies": {
+      "clear": 100.0,
+      "rain": 100.0,
+      "fog": 100.0,
+      "snow": 100.0,
+      "overcast": 100.0,
+      "twilight": 100.0
+    },
+    "average_weather_accuracy": 100.0,
+    "weather_consistency": 0.0,
+    "all_weather_performance": 100.0
+  },
+  "overall_score": {
+    "overall_score": 96.0,
+    "component_scores": {
+      "basic_performance": 100.0,
+      "multiclass_performance": 80,
+      "edge_case_performance": 100.0,
+      "weather_performance": 100.0
+    },
+    "grade": "A+"
+  }
+}
